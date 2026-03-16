@@ -6,8 +6,9 @@ import { User, Lock, ArrowRight } from 'lucide-react';
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   useEffect(() => {
@@ -18,8 +19,12 @@ export default function Login() {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    login();
-    navigate('/');
+    const result = login(email, password);
+    if (result.success) {
+      navigate('/');
+    } else {
+      setError(result.message);
+    }
   };
 
   const isDesktop = windowWidth > 1024;
@@ -138,9 +143,9 @@ export default function Login() {
               <User size={20} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-primary-green)' }} />
               <input
                 type="text"
-                placeholder="Username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Email Address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 style={{
                   width: '100%',
                   padding: '1.25rem 1.25rem 1.25rem 3.5rem',
@@ -177,6 +182,7 @@ export default function Login() {
                 }}
               />
             </div>
+            {error && <p style={{ color: '#fb7185', fontSize: '0.85rem', fontWeight: 600, textAlign: 'center', marginTop: '1rem' }}>{error}</p>}
 
             <button
               type="submit"

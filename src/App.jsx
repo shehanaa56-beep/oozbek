@@ -1,16 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import MainLayout from './components/MainLayout';
-
-// Mock components for pages
-function MockPage({ title }) {
-  return (
-    <div>
-      <h1 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>{title}</h1>
-      <p style={{ color: 'var(--color-text-muted)' }}>Page content placeholder.</p>
-    </div>
-  );
-}
 
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -19,7 +9,16 @@ import ExpenseEntry from './pages/ExpenseEntry';
 import LeaveEntry from './pages/LeaveEntry';
 import Reports from './pages/Reports';
 import Profile from './pages/Profile';
+import AdminLogin from './pages/AdminLogin';
+import UserManagement from './pages/UserManagement';
 
+function ProtectedAdminRoute({ children }) {
+  const { isAuthenticated, isSuperAdmin } = useAuth();
+  if (!isAuthenticated || !isSuperAdmin) {
+    return <Navigate to="/admin-login" replace />;
+  }
+  return children;
+}
 
 function App() {
   return (
@@ -27,6 +26,7 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/admin-login" element={<AdminLogin />} />
           
           <Route path="/" element={<MainLayout />}>
             <Route index element={<Navigate to="/dashboard" replace />} />
@@ -36,6 +36,14 @@ function App() {
             <Route path="leave" element={<LeaveEntry />} />
             <Route path="reports" element={<Reports />} />
             <Route path="profile" element={<Profile />} />
+            <Route 
+              path="user-management" 
+              element={
+                <ProtectedAdminRoute>
+                  <UserManagement />
+                </ProtectedAdminRoute>
+              } 
+            />
           </Route>
           
           <Route path="*" element={<Navigate to="/" replace />} />

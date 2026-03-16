@@ -1,6 +1,9 @@
-import { Search, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Search, User, Contact } from 'lucide-react';
 
 export default function Header() {
+  const navigate = useNavigate();
+
   return (
     <header style={{
       height: '70px',
@@ -40,7 +43,28 @@ export default function Header() {
       </div>
 
       {/* User Area */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+        <div 
+          onClick={() => navigate('/admin-login')}
+          style={{
+            width: '38px',
+            height: '38px',
+            borderRadius: '12px',
+            backgroundColor: 'var(--color-bg-light)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--color-text-main)',
+            cursor: 'pointer',
+            border: '1px solid rgba(0,0,0,0.05)',
+            transition: 'all 0.2s'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.05)'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-light)'}
+        >
+          <Contact size={20} />
+        </div>
+
         <div style={{
           width: '38px',
           height: '38px',
@@ -50,7 +74,8 @@ export default function Header() {
           alignItems: 'center',
           justifyContent: 'center',
           color: 'var(--color-text-main)',
-          cursor: 'pointer'
+          cursor: 'pointer',
+          border: '1px solid rgba(0,0,0,0.05)'
         }}>
           <User size={20} />
         </div>
