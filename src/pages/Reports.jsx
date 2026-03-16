@@ -1,16 +1,87 @@
-import { useState } from 'react';
-import { Share2, Download } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Share2, Download, Calendar, FileText } from 'lucide-react';
 
 export default function Reports() {
   const [fromDate, setFromDate] = useState('2026-02-12');
   const [toDate, setToDate] = useState('2026-02-12');
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = windowWidth <= 768;
 
   const statements = [
     { title: 'March 2026 Statement' },
-    { title: 'March 2026 Statement' },
-    { title: 'March 2026 Statement' },
-    { title: 'March 2026 Statement' }
+    { title: 'February 2026 Statement' },
+    { title: 'January 2026 Statement' },
+    { title: 'December 2025 Statement' }
   ];
+
+  if (isMobile) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+        <header>
+          <h1 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '20px' }}>Select Date Range</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: '12px', color: 'var(--mobile-text-dim)', marginBottom: '8px' }}>From :</p>
+              <div style={rangeInputStyle}>
+                12-03-2026 <Calendar size={14} />
+              </div>
+            </div>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: '12px', color: 'var(--mobile-text-dim)', marginBottom: '8px' }}>To :</p>
+              <div style={rangeInputStyle}>
+                12-03-2026 <Calendar size={14} />
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <section>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: 600 }}>Statement Preview</h2>
+            <div style={{ display: 'flex', gap: '10px' }}>
+               <button style={actionButtonStyle}><Share2 size={16} color="var(--color-primary-green)" /></button>
+               <button style={{ ...actionButtonStyle, backgroundColor: '#8B5CF6' }}><Download size={16} color="#fff" /></button>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {statements.map((stmt) => (
+              <div key={stmt.title} style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                borderRadius: '16px',
+                padding: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '15px',
+                cursor: 'pointer'
+              }}>
+                <div style={{ 
+                  backgroundColor: 'rgba(255,255,255,0.9)', 
+                  padding: '8px', 
+                  borderRadius: '8px',
+                  color: '#000',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center'
+                }}>
+                  <FileText size={16} strokeWidth={3} />
+                  <span style={{ fontSize: '8px', fontWeight: 800 }}>PDF</span>
+                </div>
+                <span style={{ fontSize: '14px', fontWeight: 600 }}>{stmt.title}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -95,10 +166,10 @@ export default function Reports() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-primary-dark)' }}>Statement Preview</h2>
         <div style={{ display: 'flex', gap: '1.25rem' }}>
-          <button style={{ color: 'var(--color-text-muted)', cursor: 'pointer' }}><Share2 size={22} /></button>
+          <button style={{ color: 'var(--color-text-muted)', cursor: 'pointer', background: 'none', border: 'none' }}><Share2 size={22} /></button>
           <button style={{ 
             color: '#fff',
-            backgroundColor: '#8B5CF6', // Purple hue from mock
+            backgroundColor: '#8B5CF6', 
             padding: '0.45rem',
             borderRadius: '10px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -147,3 +218,26 @@ export default function Reports() {
     </div>
   );
 }
+
+const rangeInputStyle = {
+  backgroundColor: '#D1D5DB',
+  color: '#333',
+  padding: '10px 15px',
+  borderRadius: '10px',
+  fontSize: '13px',
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center'
+};
+
+const actionButtonStyle = {
+  backgroundColor: 'rgba(255,255,255,0.05)',
+  padding: '8px',
+  borderRadius: '8px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  border: 'none',
+  cursor: 'pointer'
+};
+

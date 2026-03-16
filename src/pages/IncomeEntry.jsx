@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Calendar } from 'lucide-react';
 import DataTable from '../components/DataTable';
 
 const MOCK_INCOME_DATA = [
@@ -15,7 +16,7 @@ const COLUMNS = [
   { 
     header: 'Payment Type', 
     field: 'paymentType',
-    render: (val) => <span style={{ color: val === 'CASH' ? 'var(--color-primary-green)' : 'var(--color-primary-green)' }}>{val}</span> 
+    render: (val) => <span style={{ color: 'var(--color-primary-green)' }}>{val}</span> 
   },
   { header: 'Category', field: 'category' },
   { header: 'Amount', field: 'amount' },
@@ -23,7 +24,103 @@ const COLUMNS = [
 
 export default function IncomeEntry() {
   const [date, setDate] = useState('2026-02-12');
-  
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = windowWidth <= 768;
+
+  if (isMobile) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {/* Form Container */}
+        <div style={{
+          backgroundColor: 'var(--mobile-card-bg)',
+          borderRadius: '24px',
+          padding: '24px',
+          border: '1px solid rgba(255,255,255,0.05)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '3px', height: '18px', backgroundColor: 'var(--color-primary-green)', borderRadius: '4px' }}></div>
+              <h2 style={{ fontSize: '16px', fontWeight: 600 }}>Income Entry</h2>
+            </div>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px',
+              backgroundColor: 'rgba(255,255,255,0.05)',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              fontSize: '12px'
+            }}>
+              12-03-2026 <Calendar size={14} />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <input placeholder="Enter Customer Name" style={mobileInputStyle} />
+            <input placeholder="Enter Vehicle Details" style={mobileInputStyle} />
+            <input placeholder="Enter Phone Number" style={mobileInputStyle} />
+            <select style={mobileInputStyle}>
+              <option>Select Category</option>
+              <option>Polish</option>
+              <option>Wash</option>
+            </select>
+            <select style={mobileInputStyle}>
+              <option>Select Payment Type</option>
+              <option>CASH</option>
+              <option>UPI</option>
+            </select>
+            <input placeholder="Enter Amount" style={mobileInputStyle} />
+            
+            <button style={{
+              background: 'linear-gradient(to right, #82CD00, #E4EE00)',
+              color: '#000',
+              padding: '14px',
+              borderRadius: '12px',
+              fontWeight: 800,
+              marginTop: '10px',
+              fontSize: '14px',
+              border: 'none',
+              cursor: 'pointer'
+            }}>
+              Add
+            </button>
+          </div>
+        </div>
+
+        {/* List Section */}
+        <div>
+          <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '15px' }}>Today's Entries</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {MOCK_INCOME_DATA.map((item, i) => (
+              <div key={i} style={{
+                backgroundColor: 'var(--mobile-card-bg)',
+                borderRadius: '16px',
+                padding: '16px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <div>
+                  <p style={{ fontSize: '14px', fontWeight: 700 }}>{item.customerName}</p>
+                  <p style={{ fontSize: '11px', color: 'var(--mobile-text-dim)', marginTop: '4px' }}>{item.vehicleDetails} • {item.category}</p>
+                  <p style={{ fontSize: '11px', color: 'var(--mobile-text-dim)' }}>{item.phoneNo}</p>
+                </div>
+                <p style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-primary-green)' }}>{item.amount}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div style={{ marginBottom: '2.5rem' }}>
@@ -164,7 +261,8 @@ export default function IncomeEntry() {
         fontSize: '1rem',
         border: 'none',
         boxShadow: '0 10px 20px rgba(10, 38, 44, 0.15)',
-        transition: 'all 0.2s'
+        transition: 'all 0.2s',
+        cursor: 'pointer'
       }}>
         Add
       </button>
@@ -176,3 +274,16 @@ export default function IncomeEntry() {
     </div>
   );
 }
+
+const mobileInputStyle = {
+  backgroundColor: '#D1D5DB', // Light grey like in mockup
+  border: 'none',
+  borderRadius: '10px',
+  padding: '12px 16px',
+  fontSize: '14px',
+  color: '#333',
+  outline: 'none',
+  width: '100%',
+  fontFamily: 'inherit'
+};
+

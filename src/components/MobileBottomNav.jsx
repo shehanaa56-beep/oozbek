@@ -3,10 +3,10 @@ import { Home, Database, FileText, User } from 'lucide-react';
 
 export default function MobileBottomNav() {
   const navItems = [
-    { name: 'Home', path: '/m/dashboard', icon: Home },
-    { name: 'Data Entry', path: '/m/data-entry', icon: Database },
-    { name: 'Report', path: '/m/reports', icon: FileText },
-    { name: 'Profile', path: '/m/profile', icon: User },
+    { name: 'Home', path: '/dashboard', icon: Home },
+    { name: 'Data Entry', path: '/income', icon: Database },
+    { name: 'Report', path: '/reports', icon: FileText },
+    { name: 'Profile', path: '/profile', icon: User },
   ];
 
   return (

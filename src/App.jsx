@@ -20,39 +20,22 @@ import LeaveEntry from './pages/LeaveEntry';
 import Reports from './pages/Reports';
 import Profile from './pages/Profile';
 
-// Mobile Pages
-import UserLayout from './components/UserLayout';
-import MobileLogin from './pages/MobileLogin';
-import MobileDashboard from './pages/MobileDashboard';
-import MobileDataEntry from './pages/MobileDataEntry';
-import MobileReports from './pages/MobileReports';
-import MobileProfile from './pages/MobileProfile';
-
 
 function App() {
   return (
     <AuthProvider>
       <Router>
         <Routes>
-          <Route path="/login" element={<MobileLogin />} />
-          <Route path="/admin/login" element={<Login />} />
+          <Route path="/login" element={<Login />} />
           
           <Route path="/" element={<MainLayout />}>
+            <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="income" element={<IncomeEntry />} />
             <Route path="expense" element={<ExpenseEntry />} />
             <Route path="leave" element={<LeaveEntry />} />
             <Route path="reports" element={<Reports />} />
             <Route path="profile" element={<Profile />} />
-          </Route>
-
-          {/* Mobile Routes */}
-          <Route path="/m" element={<UserLayout />}>
-            <Route index element={<Navigate to="/m/dashboard" replace />} />
-            <Route path="dashboard" element={<MobileDashboard />} />
-            <Route path="data-entry" element={<MobileDataEntry />} />
-            <Route path="reports" element={<MobileReports />} />
-            <Route path="profile" element={<MobileProfile />} />
           </Route>
           
           <Route path="*" element={<Navigate to="/" replace />} />

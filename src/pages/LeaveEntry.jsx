@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Calendar, UserPlus } from 'lucide-react';
 import DataTable from '../components/DataTable';
 
 const MOCK_LEAVE_DATA = [
@@ -21,7 +22,96 @@ const COLUMNS = [
 
 export default function LeaveEntry() {
   const [date, setDate] = useState('2026-02-12');
-  
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = windowWidth <= 768;
+
+  if (isMobile) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {/* Form Container (Simplified for Leave) */}
+        <div style={{
+          backgroundColor: 'var(--mobile-card-bg)',
+          borderRadius: '24px',
+          padding: '24px',
+          border: '1px solid rgba(255,255,255,0.05)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '3px', height: '18px', backgroundColor: 'var(--color-primary-green)', borderRadius: '4px' }}></div>
+              <h2 style={{ fontSize: '16px', fontWeight: 600 }}>Leave Entry</h2>
+            </div>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px',
+              backgroundColor: 'rgba(255,255,255,0.05)',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              fontSize: '12px'
+            }}>
+              12-03-2026 <Calendar size={14} />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <input placeholder="Enter Salesman Name" style={mobileInputStyle} />
+            <input placeholder="Enter Phone Number" style={mobileInputStyle} />
+            <input placeholder="Enter Total Leave" style={mobileInputStyle} />
+            <input placeholder="Enter Salary Pending" style={mobileInputStyle} />
+            
+            <button style={{
+              background: 'linear-gradient(to right, #1F2937, #374151)',
+              color: '#fff',
+              padding: '14px',
+              borderRadius: '12px',
+              fontWeight: 800,
+              marginTop: '10px',
+              fontSize: '14px',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
+            }}>
+              <UserPlus size={18} /> Add User
+            </button>
+          </div>
+        </div>
+
+        {/* List Section */}
+        <div>
+          <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '15px' }}>Leave Records</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {MOCK_LEAVE_DATA.map((item, i) => (
+              <div key={i} style={{
+                backgroundColor: 'var(--mobile-card-bg)',
+                borderRadius: '16px',
+                padding: '16px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <div>
+                  <p style={{ fontSize: '14px', fontWeight: 700 }}>{item.salesmanName}</p>
+                  <p style={{ fontSize: '11px', color: 'var(--mobile-text-dim)', marginTop: '4px' }}>Leaves: {item.totalLeave} • {item.phoneNo}</p>
+                </div>
+                <p style={{ fontSize: '16px', fontWeight: 800, color: '#fb7185' }}>{item.salaryPending}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
@@ -57,14 +147,15 @@ export default function LeaveEntry() {
           alignItems: 'center',
           gap: '0.75rem',
           padding: '0.875rem 1.75rem',
-          backgroundColor: '#1F2937', // Darker gray for premium look
+          backgroundColor: '#1F2937', 
           color: '#fff',
           borderRadius: 'var(--radius-lg)',
           fontWeight: 700,
           fontSize: '0.9rem',
           border: 'none',
           boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-          transition: 'all 0.2s'
+          transition: 'all 0.2s',
+          cursor: 'pointer'
         }}>
           <span style={{ 
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -78,3 +169,16 @@ export default function LeaveEntry() {
     </div>
   );
 }
+
+const mobileInputStyle = {
+  backgroundColor: '#D1D5DB', 
+  border: 'none',
+  borderRadius: '10px',
+  padding: '12px 16px',
+  fontSize: '14px',
+  color: '#333',
+  outline: 'none',
+  width: '100%',
+  fontFamily: 'inherit'
+};
+

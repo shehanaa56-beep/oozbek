@@ -36,6 +36,8 @@ export default function Sidebar() {
       flexDirection: 'column',
       padding: '2.5rem 1.5rem',
       height: '100vh',
+      transition: 'var(--transition-normal)',
+      borderRight: '1px solid rgba(0,0,0,0.03)'
     }}>
       {/* Logo Area */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '3.5rem', paddingLeft: '0.5rem' }}>
@@ -71,11 +73,22 @@ export default function Sidebar() {
                     padding: '0.875rem 1.25rem',
                     borderRadius: 'var(--radius-lg)',
                     cursor: 'pointer',
-                    transition: 'all 0.2s ease',
+                    transition: 'var(--transition-normal)',
                     backgroundColor: dataEntryExpanded ? 'var(--color-primary-dark)' : 'transparent',
                     color: dataEntryExpanded ? '#fff' : 'var(--color-text-main)',
                     fontWeight: 600,
                     marginBottom: '0.5rem',
+                    boxShadow: dataEntryExpanded ? '0 10px 20px rgba(10, 38, 44, 0.15)' : 'none',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!dataEntryExpanded) {
+                      e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.05)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!dataEntryExpanded) {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -140,9 +153,20 @@ export default function Sidebar() {
                   backgroundColor: isActive ? 'var(--color-primary-dark)' : 'transparent',
                   fontWeight: 600,
                   fontSize: '1rem',
-                  transition: 'all 0.2s ease',
-                  textDecoration: 'none'
+                  transition: 'var(--transition-normal)',
+                  textDecoration: 'none',
+                  boxShadow: isActive ? '0 10px 20px rgba(10, 38, 44, 0.15)' : 'none',
                 })}
+                onMouseEnter={(e) => {
+                  if (!e.currentTarget.classList.contains('active')) {
+                    e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.05)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!e.currentTarget.classList.contains('active')) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }
+                }}
               >
                 <item.icon size={22} strokeWidth={2.5} />
                 {item.name}
