@@ -184,10 +184,18 @@ export default function Reports() {
       doc.setTextColor(0, 0, 0);
       doc.text(title, 105, 30, { align: 'center' });
       
+      const formatPDFCurrency = (num) => {
+        return "Rs. " + new Intl.NumberFormat('en-IN').format(num);
+      };
+
       autoTable(doc, {
         startY: 40,
         head: [['Metric', 'Amount']],
-        body: [['Total Income', `₹ ${ti.toLocaleString()}`], ['Total Expenses', `₹ ${te.toLocaleString()}`], ['Net Profit', `₹ ${(ti - te).toLocaleString()}`]],
+        body: [
+          ['Total Income', formatPDFCurrency(ti)], 
+          ['Total Expenses', formatPDFCurrency(te)], 
+          ['Net Profit', formatPDFCurrency(ti - te)]
+        ],
         theme: 'striped', headStyles: { fillStyle: [10, 38, 44] }
       });
 
@@ -199,7 +207,7 @@ export default function Reports() {
           t.type, 
           t.category, 
           t.customerName || t.description || '-', 
-          `₹ ${(t.amountValue || t.amount || 0).toLocaleString()}`
+          formatPDFCurrency(t.amountValue || t.amount || 0)
         ]),
         headStyles: { fillStyle: [130, 205, 0] }
       });
