@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Search, User, Contact } from 'lucide-react';
+import { Search, User, Contact, X } from 'lucide-react';
 import { useSearch } from '../context/SearchContext';
 
 export default function Header() {
@@ -25,7 +25,7 @@ export default function Header() {
           onChange={(e) => setSearchQuery(e.target.value)}
           style={{
             width: '100%',
-            padding: '0.65rem 1rem 0.65rem 2.75rem',
+            padding: '0.65rem 2.75rem 0.65rem 2.75rem', // Increased right padding for X button
             borderRadius: 'var(--radius-lg)',
             border: 'none',
             backgroundColor: 'var(--color-bg-light)',
@@ -44,6 +44,30 @@ export default function Header() {
             color: 'var(--color-text-muted)' 
           }} 
         />
+        {searchQuery && (
+          <div 
+            onClick={() => setSearchQuery('')}
+            style={{
+              position: 'absolute',
+              right: '0.75rem',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: 'var(--color-text-muted)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '4px',
+              borderRadius: '50%',
+              transition: 'all 0.2s',
+              backgroundColor: 'rgba(0,0,0,0.03)'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.08)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.03)'}
+          >
+            <X size={14} />
+          </div>
+        )}
       </div>
 
       {/* User Area */}

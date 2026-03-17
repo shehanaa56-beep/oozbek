@@ -1,9 +1,15 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 
 const SearchContext = createContext();
 
 export function SearchProvider({ children }) {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(() => {
+    return localStorage.getItem('oozbek_search_query') || '';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('oozbek_search_query', searchQuery);
+  }, [searchQuery]);
 
   return (
     <SearchContext.Provider value={{ searchQuery, setSearchQuery }}>
