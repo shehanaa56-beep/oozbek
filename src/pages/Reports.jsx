@@ -257,13 +257,13 @@ export default function Reports() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
         <header>
           <h1 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '20px' }}>Select Date Range</h1>
-          <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
-            <div style={{ flex: 1 }}>
-              <p style={{ fontSize: '11px', color: 'var(--mobile-text-dim)', marginBottom: '5px' }}>From :</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '15px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <p style={{ fontSize: '11px', color: 'var(--mobile-text-dim)', marginLeft: '4px' }}>From :</p>
               <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} style={mInput} />
             </div>
-            <div style={{ flex: 1 }}>
-              <p style={{ fontSize: '11px', color: 'var(--mobile-text-dim)', marginBottom: '5px' }}>To :</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <p style={{ fontSize: '11px', color: 'var(--mobile-text-dim)', marginLeft: '4px' }}>To :</p>
               <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} style={mInput} />
             </div>
           </div>
@@ -440,7 +440,17 @@ function SummaryCard({ title, value, color, bg = '#fff' }) {
 }
 
 // Styles
-const mInput = { backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px', color: '#fff', width: '100%', fontSize: '13px' };
+const mInput = { 
+  backgroundColor: 'rgba(255,255,255,0.05)', 
+  border: '1px solid rgba(255,255,255,0.1)', 
+  borderRadius: '12px', 
+  padding: '12px 10px', 
+  color: '#fff', 
+  width: '100%', 
+  fontSize: '13px',
+  outline: 'none',
+  textAlign: 'center'
+};
 const mApply = { width: '100%', padding: '12px', backgroundColor: '#0a262c', color: '#fff', borderRadius: '12px', fontWeight: 800, border: '1px solid #1a3a3e', cursor: 'pointer', display: 'flex', justifyContent: 'center' };
 const actBtn = { background: 'none', border: 'none', cursor: 'pointer' };
 const mSaveBtn = { background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' };
