@@ -21,7 +21,7 @@ const navItems = [
 ];
 
 export default function Sidebar() {
-  const { logout, isSuperAdmin } = useAuth();
+  const { logout, isSuperAdmin, user } = useAuth();
   const navigate = useNavigate();
   const [dataEntryExpanded, setDataEntryExpanded] = useState(true);
 
@@ -47,18 +47,24 @@ export default function Sidebar() {
           width: '52px', 
           height: '52px', 
           borderRadius: '50%', 
-          backgroundColor: '#0A262C', // Using primary dark color
+          backgroundColor: user?.photoURL ? 'transparent' : '#0A262C', 
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           overflow: 'hidden',
-          padding: '6px'
+          padding: user?.photoURL ? '0' : '6px',
+          border: '2px solid #fff',
+          boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
         }}>
-          <img src="/ooz.PNG" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          {user?.photoURL ? (
+            <img src={user.photoURL} alt="User" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <img src="/ooz.PNG" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          )}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.1' }}>
-          <span style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-text-main)' }}>Oozbek</span>
-          <span style={{ fontSize: '1.1rem', fontWeight: 500, color: 'var(--color-text-main)' }}>Admin</span>
+          <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text-main)' }}>Oozbek</span>
+          <span style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--color-text-main)' }}>{isSuperAdmin ? 'Admin' : 'Operator'}</span>
         </div>
       </div>
 

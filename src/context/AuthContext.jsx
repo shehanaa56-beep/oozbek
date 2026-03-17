@@ -5,9 +5,10 @@ import {
   signOut,
   updateEmail,
   updatePassword,
-  verifyBeforeUpdateEmail
+  verifyBeforeUpdateEmail,
+  updateProfile
 } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
 const AuthContext = createContext();
@@ -112,6 +113,33 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const updateProfilePhoto = async (base64Data) => {
+    if (!auth.currentUser) return { success: false, message: "No user logged in" };
+    try {
+      // Update Firebase Auth profile (optional, but good for consistency)
+      // Note: updateProfile might have limits on photoURL length, 
+      // so we rely primarily on Firestore.
+      try {
+        await updateProfile(auth.currentUser, { photoURL: base64Data });
+      } catch (e) {
+        console.warn("Auth profile update failed (likely too long), skipping...", e);
+      }
+      
+      // Update Firestore user document
+      await setDoc(doc(db, 'users', auth.currentUser.email), {
+        photoURL: base64Data
+      }, { merge: true });
+      
+      // Update local state
+      setUser(prev => ({ ...prev, photoURL: base64Data }));
+      
+      return { success: true, photoURL: base64Data };
+    } catch (error) {
+      console.error("Update Profile Photo Error:", error);
+      return { success: false, message: "Failed to save photo." };
+    }
+  };
+
   return (
     <AuthContext.Provider value={{ 
       isAuthenticated, 
@@ -121,6 +149,7 @@ export function AuthProvider({ children }) {
       logout,
       updateUserEmail,
       updateUserPassword,
+      updateProfilePhoto,
       loading
     }}>
       {!loading && children}

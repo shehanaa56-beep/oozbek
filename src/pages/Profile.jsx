@@ -1,20 +1,65 @@
-import { useState, useEffect } from 'react';
-import { User, Lock, Eye, EyeOff, LogOut, Loader2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { User, Lock, Eye, EyeOff, LogOut, Loader2, Camera } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Profile() {
-  const { logout, user, updateUserEmail, updateUserPassword } = useAuth();
+  const { logout, user, updateUserEmail, updateUserPassword, updateProfilePhoto } = useAuth();
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [email, setEmail] = useState(user?.email || '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewURL, setPreviewURL] = useState(user?.photoURL || null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Compress and convert to Base64
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 400;
+          const MAX_HEIGHT = 400;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Get compressed Base64
+          const base64 = canvas.toDataURL('image/jpeg', 0.7);
+          setSelectedFile(base64); // Using state to store the base64 string
+          setPreviewURL(base64);
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleUpdate = async (e) => {
     if (e) e.preventDefault();
@@ -26,8 +71,19 @@ export default function Profile() {
     setLoading(true);
     let success = true;
 
-    // Update Email if changed
-    if (email !== user.email) {
+    // 1. Update Profile Photo if selected
+    if (selectedFile) {
+      const photoRes = await updateProfilePhoto(selectedFile);
+      if (!photoRes.success) {
+        alert(photoRes.message);
+        success = false;
+      } else {
+        setSelectedFile(null); // Clear selection after success
+      }
+    }
+
+    // 2. Update Email if changed
+    if (success && email !== user.email) {
       const res = await updateUserEmail(email);
       if (!res.success) {
         alert(res.message);
@@ -37,7 +93,7 @@ export default function Profile() {
       }
     }
 
-    // Update Password if provided
+    // 3. Update Password if provided
     if (success && password) {
       const res = await updateUserPassword(password);
       if (!res.success) {
@@ -78,20 +134,51 @@ export default function Profile() {
         </button>
 
         {/* Avatar Section */}
-        <div style={{ 
-          width: '120px', 
-          height: '120px', 
-          borderRadius: '50%', 
-          backgroundColor: 'rgba(255,255,255,0.1)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: '20px',
-          overflow: 'hidden',
-          border: '3px solid rgba(255,255,255,0.05)'
-        }}>
-           <img src="/ooz.PNG" alt="Profile" style={{ width: '80%', height: 'auto' }} />
+        <div 
+          onClick={() => fileInputRef.current.click()}
+          style={{ 
+            width: '120px', 
+            height: '120px', 
+            borderRadius: '50%', 
+            backgroundColor: 'rgba(255,255,255,0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '20px',
+            overflow: 'hidden',
+            border: '3px solid rgba(255,255,255,0.05)',
+            position: 'relative',
+            cursor: 'pointer'
+          }}
+        >
+           {previewURL ? (
+             <img src={previewURL} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+           ) : (
+             <User size={60} color="rgba(255,255,255,0.3)" />
+           )}
+           <div style={{
+             position: 'absolute',
+             bottom: '5px',
+             right: '5px',
+             backgroundColor: 'var(--color-primary-green)',
+             width: '28px',
+             height: '28px',
+             borderRadius: '50%',
+             display: 'flex',
+             alignItems: 'center',
+             justifyContent: 'center',
+             border: '2px solid var(--mobile-bg)'
+           }}>
+             <Camera size={14} color="#fff" />
+           </div>
         </div>
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          style={{ display: 'none' }} 
+          accept="image/*"
+          onChange={handleFileChange}
+        />
 
         <h1 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '40px' }}>Profile</h1>
 
@@ -176,36 +263,53 @@ export default function Profile() {
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', maxWidth: '480px', margin: '0 auto' }}>
         
         {/* Avatar Area */}
-        <div style={{
-          width: '140px',
-          height: '140px',
-          borderRadius: '50%',
-          backgroundColor: '#F3F4F6',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: '3.5rem',
-          position: 'relative',
-          border: '4px solid #fff',
-          boxShadow: '0 10px 25px rgba(0,0,0,0.05)'
-        }}>
-           <User size={80} color="#D1D5DB" />
+        <div 
+          onClick={() => fileInputRef.current.click()}
+          style={{
+            width: '140px',
+            height: '140px',
+            borderRadius: '50%',
+            backgroundColor: '#F3F4F6',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '3.5rem',
+            position: 'relative',
+            border: '4px solid #fff',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.05)',
+            cursor: 'pointer',
+            overflow: 'hidden'
+          }}>
+           {previewURL ? (
+             <img src={previewURL} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+           ) : (
+             <User size={80} color="#D1D5DB" />
+           )}
            <div style={{
              position: 'absolute',
              bottom: '5px',
              right: '5px',
              backgroundColor: 'var(--color-primary-green)',
-             width: '32px',
-             height: '32px',
+             width: '36px',
+             height: '36px',
              borderRadius: '50%',
              border: '3px solid #fff',
              display: 'flex',
              alignItems: 'center',
              justifyContent: 'center'
            }}>
-             <div style={{ width: '8px', height: '8px', backgroundColor: '#fff', borderRadius: '50%' }}></div>
+             <Camera size={18} color="#fff" />
            </div>
         </div>
+        {!isMobile && (
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            style={{ display: 'none' }} 
+            accept="image/*"
+            onChange={handleFileChange}
+          />
+        )}
 
         <form style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1.75rem' }} onSubmit={handleUpdate}>
           

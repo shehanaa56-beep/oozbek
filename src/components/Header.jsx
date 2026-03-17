@@ -1,10 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import { Search, User, Contact, X } from 'lucide-react';
 import { useSearch } from '../context/SearchContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function Header() {
   const navigate = useNavigate();
   const { searchQuery, setSearchQuery } = useSearch();
+  const { user } = useAuth();
 
   return (
     <header style={{
@@ -103,9 +105,14 @@ export default function Header() {
           justifyContent: 'center',
           color: 'var(--color-text-main)',
           cursor: 'pointer',
-          border: '1px solid rgba(0,0,0,0.05)'
+          border: '1px solid rgba(0,0,0,0.05)',
+          overflow: 'hidden'
         }}>
-          <User size={20} />
+          {user?.photoURL ? (
+            <img src={user.photoURL} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <User size={20} />
+          )}
         </div>
       </div>
     </header>
