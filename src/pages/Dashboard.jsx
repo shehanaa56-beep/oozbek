@@ -105,7 +105,7 @@ export default function Dashboard() {
           </div>
           
           <div style={{ width: '100%', height: '220px' }}>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" debounce={50} minWidth={0}>
               <BarChart data={data} barGap={4}>
                 <XAxis 
                   dataKey="name" 
@@ -251,7 +251,7 @@ export default function Dashboard() {
         </div>
         
         <div style={{ width: '100%', height: '350px' }}>
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" debounce={50} minWidth={0}>
             <BarChart data={data} barGap={10} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
               <XAxis 
                 dataKey="name" 

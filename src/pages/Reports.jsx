@@ -3,7 +3,7 @@ import { Share2, Download, FileText, Loader2 } from 'lucide-react';
 import { collection, query, where, getDocs, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 export default function Reports() {
   const [fromDate, setFromDate] = useState(new Date().toISOString().split('T')[0]);
@@ -19,25 +19,47 @@ export default function Reports() {
 
     // Dynamic month discovery from real data
     const fetchRealMonths = () => {
-      const q = query(collection(db, 'income'), orderBy('date', 'desc'));
-      const unsub = onSnapshot(q, (snap) => {
+      const qI = query(collection(db, 'income'), orderBy('date', 'desc'));
+      const qE = query(collection(db, 'expenses'), orderBy('date', 'desc'));
+      
+      const updateMonths = (snaps) => {
         const months = new Set();
-        snap.forEach(doc => {
-          const d = new Date(doc.data().date);
-          if (!isNaN(d)) {
-            const mName = d.toLocaleString('default', { month: 'long' });
-            months.add(`${mName} ${d.getFullYear()}`);
-          }
+        snaps.forEach(snap => {
+          snap.forEach(doc => {
+            const d = new Date(doc.data().date);
+            if (!isNaN(d)) {
+              const mName = d.toLocaleString('default', { month: 'long' });
+              months.add(`${mName} ${d.getFullYear()}`);
+            }
+          });
         });
-        setAvailableMonths(Array.from(months).slice(0, 6)); 
+        const sortedMonths = Array.from(months).sort((a, b) => {
+          const [mA, yA] = a.split(' ');
+          const [mB, yB] = b.split(' ');
+          return new Date(`${mB} 1, ${yB}`) - new Date(`${mA} 1, ${yA}`);
+        });
+        setAvailableMonths(sortedMonths.slice(0, 6));
+      };
+
+      let iSnap = null, eSnap = null;
+      const unsubI = onSnapshot(qI, (snap) => {
+        iSnap = snap;
+        if (eSnap) updateMonths([iSnap, eSnap]);
+        else updateMonths([iSnap]);
       });
-      return unsub;
+      const unsubE = onSnapshot(qE, (snap) => {
+        eSnap = snap;
+        if (iSnap) updateMonths([iSnap, eSnap]);
+        else updateMonths([eSnap]);
+      });
+
+      return () => { unsubI(); unsubE(); };
     };
 
-    const unsub = fetchRealMonths();
+    const unsubMonths = fetchRealMonths();
     return () => {
       window.removeEventListener('resize', handleResize);
-      unsub();
+      unsubMonths();
     };
   }, []);
 
@@ -75,6 +97,53 @@ export default function Reports() {
     }
   };
 
+  const handleShare = async (title, start, end) => {
+    const shareData = {
+      title: 'Oozbek Statement',
+      text: `Check out the ${title} for Oozbek Automotive from ${start} to ${end}.`,
+      url: window.location.href
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
+        alert('Share link copied to clipboard!');
+      }
+    } catch (err) {
+      console.error('Error sharing:', err);
+    }
+  };
+
+  const getMonthDateRange = (monthYearStr) => {
+    const [monthName, year] = monthYearStr.split(' ');
+    const date = new Date(`${monthName} 1, ${year}`);
+    const monthIdx = date.getMonth();
+    const y = date.getFullYear();
+    
+    const start = `${y}-${String(monthIdx + 1).padStart(2, '0')}-01`;
+    const lastDay = new Date(y, monthIdx + 1, 0).getDate();
+    const end = `${y}-${String(monthIdx + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    
+    return { start, end };
+  };
+
+  const getRangeTitle = (start, end) => {
+    const sDate = new Date(start);
+    const eDate = new Date(end);
+    
+    // Check if it's a full month
+    if (sDate.getDate() === 1) {
+      const lastDay = new Date(sDate.getFullYear(), sDate.getMonth() + 1, 0).getDate();
+      if (eDate.getDate() === lastDay && sDate.getMonth() === eDate.getMonth() && sDate.getFullYear() === eDate.getFullYear()) {
+        return `${sDate.toLocaleString('default', { month: 'long' })} ${sDate.getFullYear()} Statement`;
+      }
+    }
+    
+    return `Statement ${start} to ${end}`;
+  };
+
   const downloadPDF = async (title, start, end, transactions = null) => {
     setLoading(true);
     try {
@@ -87,17 +156,23 @@ export default function Reports() {
         txs = [];
         iS.forEach(d => {
           const v = d.data();
-          ti += parseFloat(v.amount?.replace(/[^0-9.]/g, '')) || 0;
-          txs.push({...v, type: 'Income'});
+          const amt = parseFloat(v.amount?.replace(/[^0-9.]/g, '')) || 0;
+          ti += amt;
+          txs.push({...v, type: 'Income', amount: amt});
         });
         eS.forEach(d => {
           const v = d.data();
-          te += parseFloat(v.amount?.replace(/[^0-9.]/g, '')) || 0;
-          txs.push({...v, type: 'Expense'});
+          const amt = parseFloat(v.amount?.replace(/[^0-9.]/g, '')) || 0;
+          te += amt;
+          txs.push({...v, type: 'Expense', amount: amt});
         });
       } else {
         ti = reportData.income;
         te = reportData.expense;
+        txs = transactions.map(t => ({
+          ...t,
+          amountValue: typeof t.amount === 'string' ? (parseFloat(t.amount.replace(/[^0-9.]/g, '')) || 0) : t.amount
+        }));
       }
 
       const doc = new jsPDF();
@@ -108,23 +183,30 @@ export default function Reports() {
       doc.setTextColor(0, 0, 0);
       doc.text(title, 105, 30, { align: 'center' });
       
-      doc.autoTable({
+      autoTable(doc, {
         startY: 40,
         head: [['Metric', 'Amount']],
         body: [['Total Income', `$ ${ti.toLocaleString()}`], ['Total Expenses', `$ ${te.toLocaleString()}`], ['Net Profit', `$ ${(ti - te).toLocaleString()}`]],
         theme: 'striped', headStyles: { fillStyle: [10, 38, 44] }
       });
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: doc.lastAutoTable.finalY + 10,
         head: [['Date', 'Type', 'Category', 'Details', 'Amount']],
-        body: txs.sort((a,b) => new Date(b.date) - new Date(a.date)).map(t => [t.date, t.type, t.category, t.customerName || t.description || '-', t.amount]),
+        body: txs.sort((a,b) => new Date(b.date) - new Date(a.date)).map(t => [
+          t.date, 
+          t.type, 
+          t.category, 
+          t.customerName || t.description || '-', 
+          `$ ${(t.amountValue || t.amount || 0).toLocaleString()}`
+        ]),
         headStyles: { fillStyle: [130, 205, 0] }
       });
 
       doc.save(`Oozbek_${title.replace(/\s+/g, '_')}.pdf`);
     } catch (e) {
       console.error(e);
+      alert('Failed to generate PDF. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -154,10 +236,10 @@ export default function Reports() {
 
         <section>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 800 }}>Statement Preview</h2>
+            <h2 style={{ fontSize: '18px', fontWeight: 800 }}>{getRangeTitle(fromDate, toDate)}</h2>
             <div style={{ display: 'flex', gap: '10px' }}>
-               <button style={actBtn}><Share2 size={18} color="var(--primary-bright)" /></button>
-               <button onClick={() => downloadPDF('Custom Statement', fromDate, toDate, reportData.transactions)} style={purpBtn}><Download size={18} /></button>
+               <button onClick={() => handleShare(getRangeTitle(fromDate, toDate), fromDate, toDate)} style={actBtn}><Share2 size={18} color="var(--primary-bright)" /></button>
+               <button onClick={() => downloadPDF(getRangeTitle(fromDate, toDate), fromDate, toDate, reportData.transactions)} style={purpBtn}><Download size={18} /></button>
             </div>
           </div>
 
@@ -172,10 +254,7 @@ export default function Reports() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {availableMonths.map((m, i) => (
                 <div key={i} onClick={() => {
-                  const [month, year] = m.split(' ');
-                  const monthIdx = new Date(`${month} 1 2026`).getMonth();
-                  const start = `${year}-${String(monthIdx + 1).padStart(2, '0')}-01`;
-                  const end = `${year}-${String(monthIdx + 1).padStart(2, '0')}-31`;
+                  const { start, end } = getMonthDateRange(m);
                   downloadPDF(`${m} Statement`, start, end);
                 }} style={mStmtItem}>
                   <div style={pdfTag}>
@@ -239,10 +318,10 @@ export default function Reports() {
       <div style={{ display: 'flex', gap: '2rem' }}>
         <div style={{ flex: 1.5 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#111827' }}>Statement Preview</h2>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#111827' }}>{getRangeTitle(fromDate, toDate)}</h2>
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-              <Share2 size={24} style={{ color: '#64748b', cursor: 'pointer' }} />
-              <div onClick={() => downloadPDF('Custom Statement', fromDate, toDate, reportData.transactions)} style={dPurpBtn}>
+              <Share2 size={24} onClick={() => handleShare(getRangeTitle(fromDate, toDate), fromDate, toDate)} style={{ color: '#64748b', cursor: 'pointer' }} />
+              <div onClick={() => downloadPDF(getRangeTitle(fromDate, toDate), fromDate, toDate, reportData.transactions)} style={dPurpBtn}>
                 <Download size={20} />
               </div>
             </div>
@@ -279,9 +358,8 @@ export default function Reports() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             {availableMonths.map((m, i) => (
               <div key={i} onClick={() => {
-                const [month, year] = m.split(' ');
-                const monthIdx = new Date(`${month} 1 2026`).getMonth();
-                downloadPDF(`${m} Statement`, `${year}-${String(monthIdx+1).padStart(2,'0')}-01`, `${year}-${String(monthIdx+1).padStart(2,'0')}-31`);
+                const { start, end } = getMonthDateRange(m);
+                downloadPDF(`${m} Statement`, start, end);
               }} style={dStmtItem}>
                 <div style={dPdfTag}>PDF</div>
                 <span style={{ fontWeight: 800, fontSize: '1rem' }}>{m}</span>
