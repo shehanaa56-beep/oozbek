@@ -1,16 +1,57 @@
 import { useState, useEffect } from 'react';
-import { User, Lock, Eye, LogOut } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, LogOut, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Profile() {
-  const { logout } = useAuth();
+  const { logout, user, updateUserEmail, updateUserPassword } = useAuth();
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const [email, setEmail] = useState(user?.email || '');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  const handleUpdate = async (e) => {
+    if (e) e.preventDefault();
+    if (!email) {
+      alert("Email cannot be empty");
+      return;
+    }
+
+    setLoading(true);
+    let success = true;
+
+    // Update Email if changed
+    if (email !== user.email) {
+      const res = await updateUserEmail(email);
+      if (!res.success) {
+        alert(res.message);
+        success = false;
+      } else if (res.message) {
+        alert(res.message); // Show verification message
+      }
+    }
+
+    // Update Password if provided
+    if (success && password) {
+      const res = await updateUserPassword(password);
+      if (!res.success) {
+        alert(res.message);
+        success = false;
+      }
+    }
+
+    if (success) {
+      alert("Profile updated successfully!");
+      setPassword(''); // Clear password field
+    }
+    setLoading(false);
+  };
 
   const isMobile = windowWidth <= 768;
 
@@ -66,8 +107,10 @@ export default function Profile() {
               <User size={18} />
             </div>
             <input 
-              defaultValue="Faez@gmail.com" 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               style={profileInputStyle}
+              placeholder="Email"
             />
           </div>
 
@@ -79,30 +122,45 @@ export default function Profile() {
               <Lock size={18} />
             </div>
             <input 
-              type="password"
-              defaultValue="password" 
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               style={profileInputStyle}
+              placeholder="New Password (optional)"
             />
-            <div style={{ 
-              position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)',
-              color: 'var(--mobile-text-dim)'
-            }}>
-              <Eye size={18} />
+            <div 
+              style={{ 
+                position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)',
+                color: 'var(--mobile-text-dim)',
+                cursor: 'pointer'
+              }}
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </div>
           </div>
 
-          <button style={{
-            backgroundColor: 'rgba(255,255,255,0.1)',
-            color: '#fff',
-            padding: '16px',
-            borderRadius: '12px',
-            fontWeight: 700,
-            fontSize: '15px',
-            marginTop: '10px',
-            border: '1px solid rgba(255,255,255,0.05)',
-            cursor: 'pointer'
-          }}>
-            Update
+          <button 
+            onClick={handleUpdate}
+            disabled={loading}
+            style={{
+              backgroundColor: loading ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.1)',
+              color: '#fff',
+              padding: '16px',
+              borderRadius: '12px',
+              fontWeight: 700,
+              fontSize: '15px',
+              marginTop: '10px',
+              border: '1px solid rgba(255,255,255,0.05)',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
+            }}
+          >
+            {loading && <Loader2 size={18} className="animate-spin" />}
+            {loading ? 'Updating...' : 'Update'}
           </button>
         </div>
       </div>
@@ -149,7 +207,7 @@ export default function Profile() {
            </div>
         </div>
 
-        <form style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+        <form style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1.75rem' }} onSubmit={handleUpdate}>
           
           {/* Email/Username Input */}
           <div style={{ position: 'relative' }}>
@@ -164,18 +222,10 @@ export default function Profile() {
             </div>
             <input
               type="text"
-              defaultValue="Faez@gmail.com"
-              style={{
-                width: '100%',
-                padding: '1.125rem 1rem 1.125rem 3.5rem',
-                borderRadius: 'var(--radius-lg)',
-                border: '1.5px solid #E5E7EB',
-                backgroundColor: 'transparent',
-                fontSize: '1rem',
-                outline: 'none',
-                fontWeight: 700,
-                color: 'var(--color-primary-dark)'
-              }}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              style={desktopInputStyle}
+              placeholder="Email"
             />
           </div>
 
@@ -191,37 +241,33 @@ export default function Profile() {
               <Lock size={20} />
             </div>
             <input
-              type="password"
-              placeholder="Password"
-              style={{
-                width: '100%',
-                padding: '1.125rem 3.5rem 1.125rem 3.5rem',
-                borderRadius: 'var(--radius-lg)',
-                border: '1.5px solid #E5E7EB',
-                backgroundColor: 'transparent',
-                fontSize: '1rem',
-                outline: 'none',
-                fontWeight: 700,
-                color: 'var(--color-primary-dark)'
-              }}
+              type={showPassword ? "text" : "password"}
+              placeholder="New Password (optional)"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              style={{...desktopInputStyle, paddingRight: '3.5rem'}}
             />
-            <div style={{ 
-              position: 'absolute', 
-              right: '1.25rem', 
-              top: '50%', 
-              transform: 'translateY(-50%)',
-              color: 'var(--color-text-muted)',
-              cursor: 'pointer'
-            }}>
-              <Eye size={20} />
+            <div 
+              style={{ 
+                position: 'absolute', 
+                right: '1.25rem', 
+                top: '50%', 
+                transform: 'translateY(-50%)',
+                color: 'var(--color-text-muted)',
+                cursor: 'pointer'
+              }}
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </div>
           </div>
 
           {/* Update Button */}
           <button
-            type="button"
+            type="submit"
+            disabled={loading}
             style={{
-              backgroundColor: 'var(--color-primary-dark)',
+              backgroundColor: loading ? '#6B7280' : 'var(--color-primary-dark)',
               color: '#fff',
               padding: '1.125rem',
               borderRadius: 'var(--radius-lg)',
@@ -229,14 +275,19 @@ export default function Profile() {
               fontWeight: 800,
               marginTop: '1rem',
               border: 'none',
-              cursor: 'pointer',
+              cursor: loading ? 'not-allowed' : 'pointer',
               boxShadow: '0 10px 20px rgba(10, 38, 44, 0.2)',
-              transition: 'all 0.2s'
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px'
             }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+            onMouseEnter={(e) => { if(!loading) e.currentTarget.style.transform = 'translateY(-2px)'; }}
+            onMouseLeave={(e) => { if(!loading) e.currentTarget.style.transform = 'translateY(0)'; }}
           >
-            Update
+            {loading && <Loader2 size={20} className="animate-spin" />}
+            {loading ? 'Updating...' : 'Update'}
           </button>
         </form>
 
@@ -244,6 +295,18 @@ export default function Profile() {
     </div>
   );
 }
+
+const desktopInputStyle = {
+  width: '100%',
+  padding: '1.125rem 1rem 1.125rem 3.5rem',
+  borderRadius: 'var(--radius-lg)',
+  border: '1.5px solid #E5E7EB',
+  backgroundColor: 'transparent',
+  fontSize: '1rem',
+  outline: 'none',
+  fontWeight: 700,
+  color: 'var(--color-primary-dark)'
+};
 
 const profileInputStyle = {
   width: '100%',

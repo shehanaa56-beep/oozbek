@@ -186,7 +186,7 @@ export default function Reports() {
       autoTable(doc, {
         startY: 40,
         head: [['Metric', 'Amount']],
-        body: [['Total Income', `$ ${ti.toLocaleString()}`], ['Total Expenses', `$ ${te.toLocaleString()}`], ['Net Profit', `$ ${(ti - te).toLocaleString()}`]],
+        body: [['Total Income', `₹ ${ti.toLocaleString()}`], ['Total Expenses', `₹ ${te.toLocaleString()}`], ['Net Profit', `₹ ${(ti - te).toLocaleString()}`]],
         theme: 'striped', headStyles: { fillStyle: [10, 38, 44] }
       });
 
@@ -198,7 +198,7 @@ export default function Reports() {
           t.type, 
           t.category, 
           t.customerName || t.description || '-', 
-          `$ ${(t.amountValue || t.amount || 0).toLocaleString()}`
+          `₹ ${(t.amountValue || t.amount || 0).toLocaleString()}`
         ]),
         headStyles: { fillStyle: [130, 205, 0] }
       });
@@ -376,7 +376,7 @@ function SummaryItem({ label, value, color, isBig }) {
   return (
     <div style={{ backgroundColor: 'rgba(255,255,255,0.05)', padding: '15px 20px', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
       <span style={{ fontSize: '14px', opacity: 0.8 }}>{label}</span>
-      <span style={{ fontSize: isBig ? '24px' : '18px', fontWeight: 800, color }}>$ {value.toLocaleString()}</span>
+      <span style={{ fontSize: isBig ? '24px' : '18px', fontWeight: 800, color }}>₹ {value.toLocaleString()}</span>
     </div>
   );
 }
@@ -385,7 +385,7 @@ function SummaryCard({ title, value, color, bg = '#fff' }) {
   return (
     <div style={{ background: bg, padding: '2rem 1.75rem', borderRadius: '24px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', border: bg === '#fff' ? '1px solid #f1f5f9' : 'none' }}>
       <p style={{ fontSize: '0.9rem', fontWeight: 700, color: bg === '#fff' ? '#64748b' : 'rgba(10,38,44,0.7)', marginBottom: '0.75rem' }}>{title}</p>
-      <h2 style={{ fontSize: '2rem', fontWeight: 800, color, margin: 0 }}>$ {value.toLocaleString()}</h2>
+      <h2 style={{ fontSize: '2rem', fontWeight: 800, color, margin: 0 }}>₹ {value.toLocaleString()}</h2>
     </div>
   );
 }

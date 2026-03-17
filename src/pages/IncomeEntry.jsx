@@ -62,7 +62,7 @@ export default function IncomeEntry() {
         phoneNo,
         category,
         paymentType,
-        amount: `$ ${amount}`,
+        amount: `₹ ${amount}`,
         createdAt: new Date().toISOString()
       });
 

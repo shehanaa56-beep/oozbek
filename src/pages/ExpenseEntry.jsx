@@ -54,7 +54,7 @@ export default function ExpenseEntry() {
       await addDoc(collection(db, 'expenses'), {
         date,
         category,
-        amount: `$ ${amount}`,
+        amount: `₹ ${amount}`,
         paymentType,
         description,
         createdAt: new Date().toISOString()
