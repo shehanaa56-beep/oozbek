@@ -4,6 +4,7 @@ import { Calendar } from 'lucide-react';
 import DataTable from '../components/DataTable';
 import { collection, addDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
+import EntryTabs from '../components/EntryTabs';
 
 const COLUMNS = [
   { header: 'Date', field: 'date' },
@@ -98,6 +99,7 @@ export default function IncomeEntry() {
   if (isMobile) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <EntryTabs />
         {/* Form Container */}
         <div style={{
           backgroundColor: 'var(--mobile-card-bg)',
