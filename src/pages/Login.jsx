@@ -5,12 +5,18 @@ import { User, Lock, ArrowRight } from 'lucide-react';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
 
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);

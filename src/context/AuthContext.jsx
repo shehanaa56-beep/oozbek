@@ -46,7 +46,18 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const isSuper = userCredential.user.email === SUPER_ADMIN_EMAIL;
+      const firebaseUser = userCredential.user;
+      
+      // Fetch additional user data immediately to avoid race condition
+      const userDoc = await getDoc(doc(db, 'users', firebaseUser.email));
+      const userData = userDoc.exists() ? userDoc.data() : { role: 'User' };
+      const isSuper = firebaseUser.email === SUPER_ADMIN_EMAIL;
+      
+      // Manually set state immediately
+      setUser({ ...firebaseUser, ...userData });
+      setIsAuthenticated(true);
+      setIsSuperAdmin(isSuper);
+      
       return { success: true, isAdmin: isSuper };
     } catch (error) {
       console.error("Login Error:", error);

@@ -1,15 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ShieldAlert, User, Lock, ArrowRight } from 'lucide-react';
 
 export default function AdminLogin() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, isAuthenticated, isSuperAdmin } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated && isSuperAdmin) {
+      navigate('/user-management');
+    }
+  }, [isAuthenticated, isSuperAdmin, navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
