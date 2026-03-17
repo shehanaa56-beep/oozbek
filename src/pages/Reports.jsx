@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Share2, Download, FileText, Loader2 } from 'lucide-react';
-import { collection, query, where, getDocs, orderBy, onSnapshot } from 'firebase/firestore';
+import { Share2, Download, FileText, Loader2, Save } from 'lucide-react';
+import { collection, query, where, getDocs, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -11,6 +11,7 @@ export default function Reports() {
   const [reportData, setReportData] = useState({ income: 0, expense: 0, profit: 0, transactions: [] });
   const [availableMonths, setAvailableMonths] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [archiving, setArchiving] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   useEffect(() => {
@@ -204,11 +205,40 @@ export default function Reports() {
       });
 
       doc.save(`Oozbek_${title.replace(/\s+/g, '_')}.pdf`);
-    } catch (e) {
-      console.error(e);
-      alert('Failed to generate PDF. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const archiveReport = async () => {
+    if (reportData.transactions.length === 0) {
+      alert('No data to archive. Please apply a date range first.');
+      return;
+    }
+    
+    const title = getRangeTitle(fromDate, toDate);
+    if (!window.confirm(`Archive "${title}" to admin panel?`)) return;
+    
+    setArchiving(true);
+    try {
+      await addDoc(collection(db, 'reports_archive'), {
+        title,
+        fromDate,
+        toDate,
+        summary: {
+          income: reportData.income,
+          expense: reportData.expense,
+          profit: reportData.profit
+        },
+        transactions: reportData.transactions,
+        createdAt: serverTimestamp()
+      });
+      alert('Report archived successfully!');
+    } catch (e) {
+      console.error(e);
+      alert('Failed to archive report.');
+    } finally {
+      setArchiving(false);
     }
   };
 
@@ -238,8 +268,11 @@ export default function Reports() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <h2 style={{ fontSize: '18px', fontWeight: 800 }}>{getRangeTitle(fromDate, toDate)}</h2>
             <div style={{ display: 'flex', gap: '10px' }}>
-               <button onClick={() => handleShare(getRangeTitle(fromDate, toDate), fromDate, toDate)} style={actBtn}><Share2 size={18} color="var(--primary-bright)" /></button>
-               <button onClick={() => downloadPDF(getRangeTitle(fromDate, toDate), fromDate, toDate, reportData.transactions)} style={purpBtn}><Download size={18} /></button>
+               <button onClick={archiveReport} disabled={archiving} style={mSaveBtn} title="Archive to Admin">
+                 {archiving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} color="var(--primary-bright)" />}
+               </button>
+               <button onClick={() => handleShare(getRangeTitle(fromDate, toDate), fromDate, toDate)} style={actBtn} title="Share"><Share2 size={18} color="var(--primary-bright)" /></button>
+               <button onClick={() => downloadPDF(getRangeTitle(fromDate, toDate), fromDate, toDate, reportData.transactions)} style={purpBtn} title="Download"><Download size={18} /></button>
             </div>
           </div>
 
@@ -319,9 +352,17 @@ export default function Reports() {
         <div style={{ flex: 1.5 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#111827' }}>{getRangeTitle(fromDate, toDate)}</h2>
-            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <button 
+                onClick={archiveReport} 
+                disabled={archiving}
+                style={{ ...dGhostBtn, color: archiving ? '#94a3b8' : '#10b981' }}
+                title="Archive to Admin Panel"
+              >
+                {archiving ? <Loader2 size={24} className="animate-spin" /> : <Save size={24} />}
+              </button>
               <Share2 size={24} onClick={() => handleShare(getRangeTitle(fromDate, toDate), fromDate, toDate)} style={{ color: '#64748b', cursor: 'pointer' }} />
-              <div onClick={() => downloadPDF(getRangeTitle(fromDate, toDate), fromDate, toDate, reportData.transactions)} style={dPurpBtn}>
+              <div onClick={() => downloadPDF(getRangeTitle(fromDate, toDate), fromDate, toDate, reportData.transactions)} style={dPurpBtn} title="Download PDF">
                 <Download size={20} />
               </div>
             </div>
@@ -394,6 +435,7 @@ function SummaryCard({ title, value, color, bg = '#fff' }) {
 const mInput = { backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px', color: '#fff', width: '100%', fontSize: '13px' };
 const mApply = { width: '100%', padding: '12px', backgroundColor: '#0a262c', color: '#fff', borderRadius: '12px', fontWeight: 800, border: '1px solid #1a3a3e', cursor: 'pointer', display: 'flex', justifyContent: 'center' };
 const actBtn = { background: 'none', border: 'none', cursor: 'pointer' };
+const mSaveBtn = { background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' };
 const purpBtn = { backgroundColor: '#8B5CF6', padding: '6px', borderRadius: '8px', border: 'none', color: '#fff', cursor: 'pointer', boxShadow: '2px 2px 10px rgba(139, 92, 246, 0.4)' };
 const mStmtItem = { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: '16px', padding: '18px', display: 'flex', alignItems: 'center', gap: '15px' };
 const pdfTag = { backgroundColor: '#fff', padding: '6px 8px', borderRadius: '8px', color: '#000', display: 'flex', flexDirection: 'column', alignItems: 'center' };
@@ -403,6 +445,7 @@ const iGrp = { display: 'flex', flexDirection: 'column', gap: '0.85rem' };
 const lSty = { fontWeight: 800, fontSize: '0.9rem', color: '#0a262c' };
 const dInp = { padding: '0.875rem 1.25rem', border: '1.5px solid #E5E7EB', borderRadius: '12px', fontWeight: 700, outline: 'none', backgroundColor: '#fff', fontSize: '0.9rem', color: '#0a262c' };
 const dApply = { width: '100%', padding: '1rem', backgroundColor: '#0a262c', color: '#fff', borderRadius: '12px', fontWeight: 800, border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'center', gap: '10px' };
+const dGhostBtn = { background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem', borderRadius: '10px', transition: '0.2s' };
 const dPurpBtn = { backgroundColor: '#8B5CF6', padding: '0.6rem', borderRadius: '14px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 5px 15px rgba(139, 92, 246, 0.4)' };
 const dStmtItem = { backgroundColor: '#0a262c', color: '#fff', padding: '1.25rem 1.5rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '1.5rem', cursor: 'pointer', transition: '0.2s' };
 const dPdfTag = { backgroundColor: 'rgba(255,255,255,0.1)', color: '#fff', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 900 };

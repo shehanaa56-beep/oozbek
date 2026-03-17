@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearch } from '../context/SearchContext';
 import { Calendar } from 'lucide-react';
 import DataTable from '../components/DataTable';
 import { collection, addDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
@@ -28,6 +29,7 @@ export default function IncomeEntry() {
   const [paymentType, setPaymentType] = useState('CASH');
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
+  const { searchQuery } = useSearch();
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   useEffect(() => {
@@ -81,6 +83,17 @@ export default function IncomeEntry() {
   };
 
   const isMobile = windowWidth <= 768;
+
+  const filteredEntries = entries.filter(item => {
+    const query = searchQuery.toLowerCase();
+    return (
+      item.customerName?.toLowerCase().includes(query) ||
+      item.vehicleDetails?.toLowerCase().includes(query) ||
+      item.phoneNo?.toLowerCase().includes(query) ||
+      item.category?.toLowerCase().includes(query) ||
+      item.amount?.toLowerCase().includes(query)
+    );
+  });
 
   if (isMobile) {
     return (
@@ -175,10 +188,10 @@ export default function IncomeEntry() {
         <div>
           <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '15px' }}>Today's Entries</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {entries.length === 0 ? (
-              <p style={{ textAlign: 'center', opacity: 0.5 }}>No entries yet</p>
+            {filteredEntries.length === 0 ? (
+              <p style={{ textAlign: 'center', opacity: 0.5 }}>No matching entries</p>
             ) : (
-              entries.map((item, i) => (
+              filteredEntries.map((item, i) => (
                 <div key={item.id || i} style={{
                   backgroundColor: 'var(--mobile-card-bg)',
                   borderRadius: '16px',
@@ -382,7 +395,7 @@ export default function IncomeEntry() {
       <div style={{ marginBottom: '1.5rem' }}>
         <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-primary-dark)' }}>Latest Entries</h3>
       </div>
-      <DataTable columns={COLUMNS} data={entries} />
+      <DataTable columns={COLUMNS} data={filteredEntries} />
     </div>
   );
 }

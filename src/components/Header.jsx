@@ -1,8 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import { Search, User, Contact } from 'lucide-react';
+import { useSearch } from '../context/SearchContext';
 
 export default function Header() {
   const navigate = useNavigate();
+  const { searchQuery, setSearchQuery } = useSearch();
 
   return (
     <header style={{
@@ -19,6 +21,8 @@ export default function Header() {
         <input 
           type="text" 
           placeholder="Search here" 
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
           style={{
             width: '100%',
             padding: '0.65rem 1rem 0.65rem 2.75rem',

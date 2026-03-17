@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearch } from '../context/SearchContext';
 import { initializeApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { 
@@ -35,6 +36,7 @@ export default function UserManagement() {
   const [role, setRole] = useState('Staff');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const { searchQuery } = useSearch();
 
   // Fetch users from Firestore
   useEffect(() => {
@@ -188,61 +190,71 @@ export default function UserManagement() {
 
         {/* User List */}
         <div>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '2rem' }}>Registered Users ({users.length})</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {users.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '3rem', color: '#9CA3AF' }}>
-                No users found in Firestore.
-              </div>
-            ) : (
-              users.map((u) => (
-                <div key={u.id} style={{
-                  backgroundColor: '#fff',
-                  padding: '1.5rem 2rem',
-                  borderRadius: '24px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  border: '1px solid rgba(0,0,0,0.03)',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                    <div style={{
-                      width: '45px',
-                      height: '45px',
-                      borderRadius: '12px',
-                      backgroundColor: 'rgba(130, 205, 0, 0.1)',
-                      color: 'var(--color-primary-green)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 800,
-                      fontSize: '0.9rem'
-                    }}>
-                      {u.role ? u.role[0] : 'U'}
+          {(() => {
+            const filteredUsers = users.filter(u => {
+              const query = searchQuery.toLowerCase();
+              return u.email?.toLowerCase().includes(query) || u.role?.toLowerCase().includes(query);
+            });
+            return (
+              <>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '2rem' }}>Registered Users ({filteredUsers.length})</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {filteredUsers.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '3rem', color: '#9CA3AF' }}>
+                      No matching users found.
                     </div>
-                    <div>
-                      <p style={{ margin: 0, fontWeight: 700, fontSize: '1rem', color: 'var(--color-primary-dark)' }}>{u.email}</p>
-                      <p style={{ margin: 0, fontSize: '0.85rem', color: '#6B7280' }}>Role: {u.role}</p>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => handleDeleteUser(u.email)}
-                    style={{
-                      padding: '10px',
-                      borderRadius: '10px',
-                      border: 'none',
-                      backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                      color: '#EF4444',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <Trash2 size={18} />
-                  </button>
+                  ) : (
+                    filteredUsers.map((u) => (
+                      <div key={u.id} style={{
+                        backgroundColor: '#fff',
+                        padding: '1.5rem 2rem',
+                        borderRadius: '24px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        border: '1px solid rgba(0,0,0,0.03)',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                          <div style={{
+                            width: '45px',
+                            height: '45px',
+                            borderRadius: '12px',
+                            backgroundColor: 'rgba(130, 205, 0, 0.1)',
+                            color: 'var(--color-primary-green)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 800,
+                            fontSize: '0.9rem'
+                          }}>
+                            {u.role ? u.role[0] : 'U'}
+                          </div>
+                          <div>
+                            <p style={{ margin: 0, fontWeight: 700, fontSize: '1rem', color: 'var(--color-primary-dark)' }}>{u.email}</p>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: '#6B7280' }}>Role: {u.role}</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => handleDeleteUser(u.email)}
+                          style={{
+                            padding: '10px',
+                            borderRadius: '10px',
+                            border: 'none',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            color: '#EF4444',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    ))
+                  )}
                 </div>
-              ))
-            )}
-          </div>
+              </>
+            );
+          })()}
         </div>
       </div>
     </div>

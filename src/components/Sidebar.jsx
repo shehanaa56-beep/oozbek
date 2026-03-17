@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Database, FileText, UserCircle, LogOut } from 'lucide-react';
+import { Home, Database, FileText, UserCircle, LogOut, Archive, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
 
@@ -15,11 +15,13 @@ const navItems = [
     ]
   },
   { name: 'Reports', path: '/reports', icon: FileText },
+  { name: 'Reports Archive', path: '/reports-archive', icon: Archive, adminOnly: true },
+  { name: 'User Management', path: '/user-management', icon: Users, adminOnly: true },
   { name: 'Profile', path: '/profile', icon: UserCircle },
 ];
 
 export default function Sidebar() {
-  const { logout } = useAuth();
+  const { logout, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const [dataEntryExpanded, setDataEntryExpanded] = useState(true);
 
@@ -62,7 +64,7 @@ export default function Sidebar() {
 
       {/* Navigation Links */}
       <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-        {navItems.map((item) => (
+        {navItems.filter(item => !item.adminOnly || isSuperAdmin).map((item) => (
           <div key={item.name}>
             {item.subItems ? (
               <>
