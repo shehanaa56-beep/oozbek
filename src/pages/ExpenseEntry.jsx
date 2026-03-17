@@ -1,13 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Calendar } from 'lucide-react';
 import DataTable from '../components/DataTable';
-
-const MOCK_EXPENSE_DATA = [
-  { date: '12-03-2026', category: 'Rent Amount', paymentType: 'UPI', description: '-', amount: '$ 1,000' },
-  { date: '12-03-2026', category: 'Purchase', paymentType: 'CASH', description: 'Polish', amount: '$ 1,000' },
-  { date: '12-03-2026', category: 'Electricity Bill', paymentType: 'CASH', description: '-', amount: '$ 1,000' },
-  { date: '12-03-2026', category: 'Salary Advance', paymentType: 'CASH', description: 'Rahul', amount: '$ 1,000' },
-];
+import { collection, addDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { db } from '../firebase';
 
 const COLUMNS = [
   { header: 'Date', field: 'date' },
@@ -22,14 +17,60 @@ const COLUMNS = [
 ];
 
 export default function ExpenseEntry() {
-  const [date, setDate] = useState('2026-02-12');
+  const [entries, setEntries] = useState([]);
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [category, setCategory] = useState('Rent');
+  const [amount, setAmount] = useState('');
+  const [paymentType, setPaymentType] = useState('CASH');
+  const [description, setDescription] = useState('');
+  const [loading, setLoading] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+
+    const q = query(collection(db, 'expenses'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setEntries(data);
+    });
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      unsubscribe();
+    };
   }, []);
+
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (!amount) {
+      alert("Please enter an amount");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await addDoc(collection(db, 'expenses'), {
+        date,
+        category,
+        amount: `$ ${amount}`,
+        paymentType,
+        description,
+        createdAt: new Date().toISOString()
+      });
+
+      // Clear form
+      setAmount('');
+      setDescription('');
+      alert("Expense added successfully!");
+    } catch (error) {
+      console.error("Error adding expense:", error);
+      alert("Failed to add expense.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const isMobile = windowWidth <= 768;
 
@@ -57,36 +98,57 @@ export default function ExpenseEntry() {
               borderRadius: '8px',
               fontSize: '12px'
             }}>
-              12-03-2026 <Calendar size={14} />
+              {date} <Calendar size={14} />
             </div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <select style={mobileInputStyle}>
-              <option>Select Category</option>
-              <option>Rent</option>
-              <option>Utilities</option>
+            <select 
+              style={mobileInputStyle}
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              <option value="Rent">Rent</option>
+              <option value="Utilities">Utilities</option>
+              <option value="Purchase">Purchase</option>
+              <option value="Salary">Salary</option>
             </select>
-            <input placeholder="Enter Amount" style={mobileInputStyle} />
-            <select style={mobileInputStyle}>
-              <option>Select Payment Type</option>
-              <option>CASH</option>
-              <option>UPI</option>
+            <input 
+              placeholder="Enter Amount" 
+              style={mobileInputStyle} 
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+            <select 
+              style={mobileInputStyle}
+              value={paymentType}
+              onChange={(e) => setPaymentType(e.target.value)}
+            >
+              <option value="CASH">CASH</option>
+              <option value="UPI">UPI</option>
             </select>
-            <input placeholder="Enter Description" style={mobileInputStyle} />
+            <input 
+              placeholder="Enter Description" 
+              style={mobileInputStyle} 
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
             
-            <button style={{
-              background: 'linear-gradient(to right, #82CD00, #E4EE00)',
-              color: '#000',
-              padding: '14px',
-              borderRadius: '12px',
-              fontWeight: 800,
-              marginTop: '10px',
-              fontSize: '14px',
-              border: 'none',
-              cursor: 'pointer'
-            }}>
-              Add
+            <button 
+              onClick={handleSubmit}
+              disabled={loading}
+              style={{
+                background: loading ? '#6B7280' : 'linear-gradient(to right, #82CD00, #E4EE00)',
+                color: '#000',
+                padding: '14px',
+                borderRadius: '12px',
+                fontWeight: 800,
+                marginTop: '10px',
+                fontSize: '14px',
+                border: 'none',
+                cursor: loading ? 'not-allowed' : 'pointer'
+              }}>
+              {loading ? 'Adding...' : 'Add'}
             </button>
           </div>
         </div>
@@ -95,23 +157,27 @@ export default function ExpenseEntry() {
         <div>
           <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '15px' }}>Today's Entries</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {MOCK_EXPENSE_DATA.map((item, i) => (
-              <div key={i} style={{
-                backgroundColor: 'var(--mobile-card-bg)',
-                borderRadius: '16px',
-                padding: '16px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <div>
-                  <p style={{ fontSize: '14px', fontWeight: 700 }}>{item.category}</p>
-                  <p style={{ fontSize: '11px', color: 'var(--mobile-text-dim)', marginTop: '4px' }}>{item.paymentType} • {item.description}</p>
-                  <p style={{ fontSize: '11px', color: 'var(--mobile-text-dim)' }}>{item.date}</p>
+            {entries.length === 0 ? (
+              <p style={{ textAlign: 'center', opacity: 0.5 }}>No expenses yet</p>
+            ) : (
+              entries.map((item, i) => (
+                <div key={item.id || i} style={{
+                  backgroundColor: 'var(--mobile-card-bg)',
+                  borderRadius: '16px',
+                  padding: '16px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <div>
+                    <p style={{ fontSize: '14px', fontWeight: 700 }}>{item.category}</p>
+                    <p style={{ fontSize: '11px', color: 'var(--mobile-text-dim)', marginTop: '4px' }}>{item.paymentType} • {item.description}</p>
+                    <p style={{ fontSize: '11px', color: 'var(--mobile-text-dim)' }}>{item.date}</p>
+                  </div>
+                  <p style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-primary-green)' }}>{item.amount}</p>
                 </div>
-                <p style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-primary-green)' }}>{item.amount}</p>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -124,7 +190,7 @@ export default function ExpenseEntry() {
         <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-primary-dark)' }}>Expense Entry</h1>
       </div>
       
-      {/* Date Picker (Mock) */}
+      {/* Date Picker */}
       <div style={{ display: 'inline-block', position: 'relative', marginBottom: '2.5rem' }}>
         <label style={{ display: 'block', fontWeight: 800, fontSize: '0.85rem', marginBottom: '0.75rem', color: 'var(--color-primary-dark)' }}>Date</label>
         <div style={{ position: 'relative' }}>
@@ -157,89 +223,110 @@ export default function ExpenseEntry() {
         {/* Row 1 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
           <label style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-primary-dark)' }}>Category</label>
-          <select style={{ 
-            padding: '1.125rem', 
-            borderRadius: 'var(--radius-lg)', 
-            border: '1.5px solid #E5E7EB', 
-            backgroundColor: '#fff',
-            outline: 'none',
-            fontSize: '0.95rem',
-            fontWeight: 500,
-            color: '#4B5563'
-          }}>
-            <option>Select Category</option>
-            <option>Rent</option>
-            <option>Utilities</option>
+          <select 
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            style={{ 
+              padding: '1.125rem', 
+              borderRadius: 'var(--radius-lg)', 
+              border: '1.5px solid #E5E7EB', 
+              backgroundColor: '#fff',
+              outline: 'none',
+              fontSize: '0.95rem',
+              fontWeight: 500,
+              color: '#4B5563'
+            }}>
+            <option value="Rent">Rent</option>
+            <option value="Utilities">Utilities</option>
+            <option value="Purchase">Purchase</option>
+            <option value="Salary">Salary</option>
           </select>
         </div>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
           <label style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-primary-dark)' }}>Amount</label>
-          <input type="text" placeholder="Enter Amount" style={{ 
-            padding: '1.125rem', 
-            borderRadius: 'var(--radius-lg)', 
-            border: '1.5px solid #E5E7EB', 
-            backgroundColor: '#fff',
-            outline: 'none',
-            fontSize: '0.95rem',
-            fontWeight: 500
-          }} />
+          <input 
+            type="text" 
+            placeholder="Enter Amount" 
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            style={{ 
+              padding: '1.125rem', 
+              borderRadius: 'var(--radius-lg)', 
+              border: '1.5px solid #E5E7EB', 
+              backgroundColor: '#fff',
+              outline: 'none',
+              fontSize: '0.95rem',
+              fontWeight: 500
+            }} 
+          />
         </div>
 
         {/* Row 2 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
           <label style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-primary-dark)' }}>Payment Type</label>
-          <select style={{ 
-            padding: '1.125rem', 
-            borderRadius: 'var(--radius-lg)', 
-            border: '1.5px solid #E5E7EB', 
-            backgroundColor: '#fff',
-            outline: 'none',
-            fontSize: '0.95rem',
-            fontWeight: 500,
-            color: '#4B5563'
-          }}>
-            <option>Select Payment Type</option>
-            <option>CASH</option>
-            <option>UPI</option>
+          <select 
+            value={paymentType}
+            onChange={(e) => setPaymentType(e.target.value)}
+            style={{ 
+              padding: '1.125rem', 
+              borderRadius: 'var(--radius-lg)', 
+              border: '1.5px solid #E5E7EB', 
+              backgroundColor: '#fff',
+              outline: 'none',
+              fontSize: '0.95rem',
+              fontWeight: 500,
+              color: '#4B5563'
+            }}>
+            <option value="CASH">CASH</option>
+            <option value="UPI">UPI</option>
           </select>
         </div>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
           <label style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-primary-dark)' }}>Description</label>
-          <input type="text" placeholder="Enter Description" style={{ 
-            padding: '1.125rem', 
-            borderRadius: 'var(--radius-lg)', 
-            border: '1.5px solid #E5E7EB', 
-            backgroundColor: '#fff',
-            outline: 'none',
-            fontSize: '0.95rem',
-            fontWeight: 500
-          }} />
+          <input 
+            type="text" 
+            placeholder="Enter Description" 
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            style={{ 
+              padding: '1.125rem', 
+              borderRadius: 'var(--radius-lg)', 
+              border: '1.5px solid #E5E7EB', 
+              backgroundColor: '#fff',
+              outline: 'none',
+              fontSize: '0.95rem',
+              fontWeight: 500
+            }} 
+          />
         </div>
       </div>
 
-      <button style={{
-        width: '100%',
-        padding: '1.125rem',
-        backgroundColor: 'var(--color-primary-dark)',
-        color: '#fff',
-        borderRadius: 'var(--radius-lg)',
-        fontWeight: 700,
-        marginBottom: '4rem',
-        fontSize: '1rem',
-        border: 'none',
-        boxShadow: '0 10px 20px rgba(10, 38, 44, 0.15)',
-        transition: 'all 0.2s',
-        cursor: 'pointer'
-      }}>
-        Add
+      <button 
+        onClick={handleSubmit}
+        disabled={loading}
+        style={{
+          width: '100%',
+          padding: '1.125rem',
+          backgroundColor: loading ? '#6B7280' : 'var(--color-primary-dark)',
+          color: '#fff',
+          borderRadius: 'var(--radius-lg)',
+          fontWeight: 700,
+          marginBottom: '4rem',
+          fontSize: '1rem',
+          border: 'none',
+          boxShadow: '0 10px 20px rgba(10, 38, 44, 0.15)',
+          transition: 'all 0.2s',
+          cursor: loading ? 'not-allowed' : 'pointer'
+        }}>
+        {loading ? 'Adding...' : 'Add'}
       </button>
 
       <div style={{ marginBottom: '1.5rem' }}>
         <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-primary-dark)' }}>Latest Entries</h3>
       </div>
-      <DataTable columns={COLUMNS} data={MOCK_EXPENSE_DATA} />
+      <DataTable columns={COLUMNS} data={entries} />
     </div>
   );
 }

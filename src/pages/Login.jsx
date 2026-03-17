@@ -9,6 +9,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   useEffect(() => {
@@ -17,14 +18,17 @@ export default function Login() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    const result = login(email, password);
+    setLoading(true);
+    setError('');
+    const result = await login(email, password);
     if (result.success) {
       navigate('/');
     } else {
       setError(result.message);
     }
+    setLoading(false);
   };
 
   const isDesktop = windowWidth > 1024;
@@ -186,10 +190,11 @@ export default function Login() {
 
             <button
               type="submit"
+              disabled={loading}
               style={{
                 width: '100%',
                 padding: '1.25rem',
-                backgroundColor: 'var(--color-primary-green)',
+                backgroundColor: loading ? '#9CA3AF' : 'var(--color-primary-green)',
                 color: '#fff',
                 borderRadius: isMobile ? '15px' : '20px',
                 fontSize: '1.1rem',
@@ -202,18 +207,22 @@ export default function Login() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '0.75rem',
-                cursor: 'pointer'
+                cursor: loading ? 'not-allowed' : 'pointer'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-3px)';
-                e.currentTarget.style.filter = 'brightness(1.1)';
+                if (!loading) {
+                  e.currentTarget.style.transform = 'translateY(-3px)';
+                  e.currentTarget.style.filter = 'brightness(1.1)';
+                }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.filter = 'brightness(1)';
+                if (!loading) {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.filter = 'brightness(1)';
+                }
               }}
             >
-              Sign In <ArrowRight size={20} />
+              {loading ? 'Signing In...' : 'Sign In'} <ArrowRight size={20} />
             </button>
           </form>
           

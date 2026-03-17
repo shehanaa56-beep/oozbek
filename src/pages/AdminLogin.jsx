@@ -9,15 +9,19 @@ export default function AdminLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    const result = login(email, password);
+    setLoading(true);
+    setError('');
+    const result = await login(email, password);
     if (result.success && result.isAdmin) {
       navigate('/user-management');
     } else {
       setError(result.message || "Unauthorized access attempt.");
     }
+    setLoading(false);
   };
 
   return (
@@ -87,8 +91,9 @@ export default function AdminLogin() {
 
           <button
             type="submit"
+            disabled={loading}
             style={{
-              backgroundColor: 'var(--color-primary-green)',
+              backgroundColor: loading ? '#9CA3AF' : 'var(--color-primary-green)',
               color: '#000',
               padding: '1.125rem',
               borderRadius: '16px',
@@ -96,7 +101,7 @@ export default function AdminLogin() {
               fontWeight: 800,
               marginTop: '1rem',
               border: 'none',
-              cursor: 'pointer',
+              cursor: loading ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -104,7 +109,7 @@ export default function AdminLogin() {
               transition: 'all 0.2s'
             }}
           >
-            Authenticate <ArrowRight size={18} />
+            {loading ? 'Authenticating...' : 'Authenticate'} <ArrowRight size={18} />
           </button>
         </form>
       </div>

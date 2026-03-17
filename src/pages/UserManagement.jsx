@@ -1,19 +1,93 @@
-import { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useState, useEffect } from 'react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { 
+  collection, 
+  setDoc, 
+  doc, 
+  onSnapshot, 
+  deleteDoc,
+  query
+} from 'firebase/firestore';
+import { db } from '../firebase';
 import { UserPlus, Mail, Shield, Key, Trash2, Users } from 'lucide-react';
 
+// Secondary Firebase App for creating users without signing out the current Admin
+// We use the same config but a different app name
+const firebaseConfig = {
+  apiKey: "AIzaSyBiek6AoFRr7nC497zaN_262JiI45UBcBM",
+  authDomain: "login-1a7fe.firebaseapp.com",
+  databaseURL: "https://login-1a7fe-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "login-1a7fe",
+  storageBucket: "login-1a7fe.firebasestorage.app",
+  messagingSenderId: "429964842954",
+  appId: "1:429964842954:web:d7c475efd137b9efd8e133",
+  measurementId: "G-JQ5CS5HRGF"
+};
+
+const secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");
+const secondaryAuth = getAuth(secondaryApp);
+
 export default function UserManagement() {
-  const { localUsers, addUser, deleteUser } = useAuth();
+  const [users, setUsers] = useState([]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('Staff');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  // Fetch users from Firestore
+  useEffect(() => {
+    const q = query(collection(db, 'users'));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const usersList = [];
+      querySnapshot.forEach((doc) => {
+        usersList.push({ id: doc.id, ...doc.data() });
+      });
+      setUsers(usersList);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    addUser({ email, password, role });
-    setEmail('');
-    setPassword('');
-    setRole('Staff');
+    setLoading(true);
+    setError('');
+
+    try {
+      // 1. Create user in Firebase Auth using the secondary app
+      await createUserWithEmailAndPassword(secondaryAuth, email, password);
+      
+      // 2. Store user role/metadata in Firestore
+      await setDoc(doc(db, 'users', email), {
+        email,
+        role,
+        createdAt: new Date().toISOString()
+      });
+
+      // Clear form
+      setEmail('');
+      setPassword('');
+      setRole('Staff');
+      alert("User account created successfully!");
+    } catch (err) {
+      console.error("Error creating user:", err);
+      setError(err.message || "Failed to create user.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (userEmail) => {
+    if (window.confirm(`Are you sure you want to delete user ${userEmail}? This will only remove their Firestore metadata, not the Auth account.`)) {
+      try {
+        await deleteDoc(doc(db, 'users', userEmail));
+      } catch (err) {
+        console.error("Error deleting user:", err);
+        alert("Failed to delete user metadata.");
+      }
+    }
   };
 
   return (
@@ -48,6 +122,7 @@ export default function UserManagement() {
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
                   style={inputStyle}
+                  disabled={loading}
                 >
                   <option>Staff</option>
                   <option>Manager</option>
@@ -67,6 +142,7 @@ export default function UserManagement() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   style={inputStyle}
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -82,14 +158,18 @@ export default function UserManagement() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   style={inputStyle}
+                  disabled={loading}
                 />
               </div>
             </div>
 
+            {error && <p style={{ color: '#EF4444', fontSize: '0.85rem', fontWeight: 600 }}>{error}</p>}
+
             <button
               type="submit"
+              disabled={loading}
               style={{
-                backgroundColor: 'var(--color-primary-dark)',
+                backgroundColor: loading ? '#9CA3AF' : 'var(--color-primary-dark)',
                 color: '#fff',
                 padding: '1.125rem',
                 borderRadius: '16px',
@@ -97,26 +177,26 @@ export default function UserManagement() {
                 fontWeight: 800,
                 marginTop: '1rem',
                 border: 'none',
-                cursor: 'pointer',
+                cursor: loading ? 'not-allowed' : 'pointer',
                 boxShadow: '0 10px 20px rgba(10, 38, 44, 0.1)'
               }}
             >
-              Create Account
+              {loading ? 'Creating...' : 'Create Account'}
             </button>
           </form>
         </div>
 
         {/* User List */}
         <div>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '2rem' }}>Registered Users ({localUsers.length})</h3>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '2rem' }}>Registered Users ({users.length})</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {localUsers.length === 0 ? (
+            {users.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '3rem', color: '#9CA3AF' }}>
-                No additional users registered.
+                No users found in Firestore.
               </div>
             ) : (
-              localUsers.map((u, i) => (
-                <div key={i} style={{
+              users.map((u) => (
+                <div key={u.id} style={{
                   backgroundColor: '#fff',
                   padding: '1.5rem 2rem',
                   borderRadius: '24px',
@@ -139,7 +219,7 @@ export default function UserManagement() {
                       fontWeight: 800,
                       fontSize: '0.9rem'
                     }}>
-                      {u.role[0]}
+                      {u.role ? u.role[0] : 'U'}
                     </div>
                     <div>
                       <p style={{ margin: 0, fontWeight: 700, fontSize: '1rem', color: 'var(--color-primary-dark)' }}>{u.email}</p>
@@ -147,7 +227,7 @@ export default function UserManagement() {
                     </div>
                   </div>
                   <button 
-                    onClick={() => deleteUser(u.email)}
+                    onClick={() => handleDeleteUser(u.email)}
                     style={{
                       padding: '10px',
                       borderRadius: '10px',

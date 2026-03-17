@@ -1,243 +1,332 @@
 import { useState, useEffect } from 'react';
-import { Share2, Download, Calendar, FileText } from 'lucide-react';
+import { Share2, Download, FileText, Loader2 } from 'lucide-react';
+import { collection, query, where, getDocs, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 export default function Reports() {
-  const [fromDate, setFromDate] = useState('2026-02-12');
-  const [toDate, setToDate] = useState('2026-02-12');
+  const [fromDate, setFromDate] = useState(new Date().toISOString().split('T')[0]);
+  const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0]);
+  const [reportData, setReportData] = useState({ income: 0, expense: 0, profit: 0, transactions: [] });
+  const [availableMonths, setAvailableMonths] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+
+    // Dynamic month discovery from real data
+    const fetchRealMonths = () => {
+      const q = query(collection(db, 'income'), orderBy('date', 'desc'));
+      const unsub = onSnapshot(q, (snap) => {
+        const months = new Set();
+        snap.forEach(doc => {
+          const d = new Date(doc.data().date);
+          if (!isNaN(d)) {
+            const mName = d.toLocaleString('default', { month: 'long' });
+            months.add(`${mName} ${d.getFullYear()}`);
+          }
+        });
+        setAvailableMonths(Array.from(months).slice(0, 6)); 
+      });
+      return unsub;
+    };
+
+    const unsub = fetchRealMonths();
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      unsub();
+    };
   }, []);
 
-  const isMobile = windowWidth <= 768;
+  const fetchReportData = async () => {
+    setLoading(true);
+    try {
+      const qI = query(collection(db, 'income'), where('date', '>=', fromDate), where('date', '<=', toDate));
+      const qE = query(collection(db, 'expenses'), where('date', '>=', fromDate), where('date', '<=', toDate));
+      
+      const [iSnap, eSnap] = await Promise.all([getDocs(qI), getDocs(qE)]);
 
-  const statements = [
-    { title: 'March 2026 Statement' },
-    { title: 'February 2026 Statement' },
-    { title: 'January 2026 Statement' },
-    { title: 'December 2025 Statement' }
-  ];
+      let ti = 0, te = 0;
+      const txs = [];
+      iSnap.forEach(d => {
+        const v = d.data();
+        ti += parseFloat(v.amount?.replace(/[^0-9.]/g, '')) || 0;
+        txs.push({...v, type: 'Income', id: d.id});
+      });
+      eSnap.forEach(d => {
+        const v = d.data();
+        te += parseFloat(v.amount?.replace(/[^0-9.]/g, '')) || 0;
+        txs.push({...v, type: 'Expense', id: d.id});
+      });
+
+      setReportData({
+        income: ti,
+        expense: te,
+        profit: ti - te,
+        transactions: txs.sort((a,b) => new Date(b.date) - new Date(a.date))
+      });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const downloadPDF = async (title, start, end, transactions = null) => {
+    setLoading(true);
+    try {
+      let ti = 0, te = 0, txs = transactions;
+      
+      if (!txs) {
+        const qI = query(collection(db, 'income'), where('date', '>=', start), where('date', '<=', end));
+        const qE = query(collection(db, 'expenses'), where('date', '>=', start), where('date', '<=', end));
+        const [iS, eS] = await Promise.all([getDocs(qI), getDocs(qE)]);
+        txs = [];
+        iS.forEach(d => {
+          const v = d.data();
+          ti += parseFloat(v.amount?.replace(/[^0-9.]/g, '')) || 0;
+          txs.push({...v, type: 'Income'});
+        });
+        eS.forEach(d => {
+          const v = d.data();
+          te += parseFloat(v.amount?.replace(/[^0-9.]/g, '')) || 0;
+          txs.push({...v, type: 'Expense'});
+        });
+      } else {
+        ti = reportData.income;
+        te = reportData.expense;
+      }
+
+      const doc = new jsPDF();
+      doc.setFontSize(22);
+      doc.setTextColor(130, 205, 0);
+      doc.text('Oozbek Automotive', 105, 20, { align: 'center' });
+      doc.setFontSize(16);
+      doc.setTextColor(0, 0, 0);
+      doc.text(title, 105, 30, { align: 'center' });
+      
+      doc.autoTable({
+        startY: 40,
+        head: [['Metric', 'Amount']],
+        body: [['Total Income', `$ ${ti.toLocaleString()}`], ['Total Expenses', `$ ${te.toLocaleString()}`], ['Net Profit', `$ ${(ti - te).toLocaleString()}`]],
+        theme: 'striped', headStyles: { fillStyle: [10, 38, 44] }
+      });
+
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 10,
+        head: [['Date', 'Type', 'Category', 'Details', 'Amount']],
+        body: txs.sort((a,b) => new Date(b.date) - new Date(a.date)).map(t => [t.date, t.type, t.category, t.customerName || t.description || '-', t.amount]),
+        headStyles: { fillStyle: [130, 205, 0] }
+      });
+
+      doc.save(`Oozbek_${title.replace(/\s+/g, '_')}.pdf`);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isMobile = windowWidth <= 768;
 
   if (isMobile) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
         <header>
-          <h1 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '20px' }}>Select Date Range</h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <h1 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '20px' }}>Select Date Range</h1>
+          <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
             <div style={{ flex: 1 }}>
-              <p style={{ fontSize: '12px', color: 'var(--mobile-text-dim)', marginBottom: '8px' }}>From :</p>
-              <div style={rangeInputStyle}>
-                12-03-2026 <Calendar size={14} />
-              </div>
+              <p style={{ fontSize: '11px', color: 'var(--mobile-text-dim)', marginBottom: '5px' }}>From :</p>
+              <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} style={mInput} />
             </div>
             <div style={{ flex: 1 }}>
-              <p style={{ fontSize: '12px', color: 'var(--mobile-text-dim)', marginBottom: '8px' }}>To :</p>
-              <div style={rangeInputStyle}>
-                12-03-2026 <Calendar size={14} />
-              </div>
+              <p style={{ fontSize: '11px', color: 'var(--mobile-text-dim)', marginBottom: '5px' }}>To :</p>
+              <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} style={mInput} />
             </div>
           </div>
+          <button onClick={fetchReportData} disabled={loading} style={mApply}>
+            {loading ? <Loader2 size={16} className="animate-spin" /> : 'Apply'}
+          </button>
         </header>
 
         <section>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h2 style={{ fontSize: '16px', fontWeight: 600 }}>Statement Preview</h2>
+            <h2 style={{ fontSize: '18px', fontWeight: 800 }}>Statement Preview</h2>
             <div style={{ display: 'flex', gap: '10px' }}>
-               <button style={actionButtonStyle}><Share2 size={16} color="var(--color-primary-green)" /></button>
-               <button style={{ ...actionButtonStyle, backgroundColor: '#8B5CF6' }}><Download size={16} color="#fff" /></button>
+               <button style={actBtn}><Share2 size={18} color="var(--primary-bright)" /></button>
+               <button onClick={() => downloadPDF('Custom Statement', fromDate, toDate, reportData.transactions)} style={purpBtn}><Download size={18} /></button>
             </div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {statements.map((stmt) => (
-              <div key={stmt.title} style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                borderRadius: '16px',
-                padding: '20px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '15px',
-                cursor: 'pointer'
-              }}>
-                <div style={{ 
-                  backgroundColor: 'rgba(255,255,255,0.9)', 
-                  padding: '8px', 
-                  borderRadius: '8px',
-                  color: '#000',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center'
-                }}>
-                  <FileText size={16} strokeWidth={3} />
-                  <span style={{ fontSize: '8px', fontWeight: 800 }}>PDF</span>
-                </div>
-                <span style={{ fontSize: '14px', fontWeight: 600 }}>{stmt.title}</span>
-              </div>
-            ))}
+            <SummaryItem label="Total Income" value={reportData.income} color="#10b981" />
+            <SummaryItem label="Total Expense" value={reportData.expense} color="#fb7185" />
+            <SummaryItem label="Net Profit" value={reportData.profit} color="#fff" isBig />
           </div>
+
+          <div style={{ marginTop: '25px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 800, marginBottom: '15px' }}>Monthly Statements</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {availableMonths.map((m, i) => (
+                <div key={i} onClick={() => {
+                  const [month, year] = m.split(' ');
+                  const monthIdx = new Date(`${month} 1 2026`).getMonth();
+                  const start = `${year}-${String(monthIdx + 1).padStart(2, '0')}-01`;
+                  const end = `${year}-${String(monthIdx + 1).padStart(2, '0')}-31`;
+                  downloadPDF(`${m} Statement`, start, end);
+                }} style={mStmtItem}>
+                  <div style={pdfTag}>
+                    <FileText size={14} strokeWidth={3} />
+                    <span style={{ fontSize: '8px', fontWeight: 800 }}>PDF</span>
+                  </div>
+                  <span style={{ fontSize: '14px', fontWeight: 600 }}>{m} Statement</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {reportData.transactions.length > 0 && (
+            <div style={{ marginTop: '25px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 800, marginBottom: '15px' }}>Transaction Details</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {reportData.transactions.map((t, i) => (
+                  <div key={i} style={mTxCard}>
+                    <div>
+                      <p style={{ fontSize: '11px', opacity: 0.6 }}>{t.date} • {t.type}</p>
+                      <p style={{ fontWeight: 700, fontSize: '14px' }}>{t.category}</p>
+                    </div>
+                    <p style={{ fontWeight: 800, color: t.type === 'Income' ? '#10b981' : '#fb7185' }}>{t.amount}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
       </div>
     );
   }
 
   return (
-    <div>
-      <div style={{ marginBottom: '2.5rem' }}>
-        <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-primary-dark)' }}>Monthly Reports</h1>
-      </div>
+    <div style={{ padding: '0.5rem' }}>
+      <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-primary-dark)', marginBottom: '2rem' }}>Monthly Reports</h1>
       
-      {/* Date Range Selection Card */}
-      <div style={{
-        backgroundColor: '#fff',
-        padding: '2.5rem',
-        borderRadius: '24px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
-        marginBottom: '3.5rem',
-        border: '1px solid rgba(0,0,0,0.03)'
-      }}>
+      <div style={dCard}>
         <h3 style={{ fontSize: '1.1rem', color: 'var(--color-primary-dark)', marginBottom: '2rem', fontWeight: 800 }}>Select Date Range</h3>
-        
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '3rem', alignItems: 'end' }}>
-          {/* From Date */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-            <label style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-primary-dark)' }}>From</label>
-            <input 
-              type="date" 
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              style={{
-                padding: '0.875rem 1.25rem',
-                border: '1.5px solid #E5E7EB',
-                borderRadius: 'var(--radius-lg)',
-                fontFamily: 'inherit',
-                fontWeight: 700,
-                outline: 'none',
-                backgroundColor: '#fff',
-                fontSize: '0.9rem',
-                color: 'var(--color-primary-dark)'
-              }}
-            />
+          <div style={iGrp}>
+            <label style={lSty}>From</label>
+            <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} style={dInp} />
           </div>
-
-          {/* To Date */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-            <label style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-primary-dark)' }}>To</label>
-            <input 
-              type="date" 
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              style={{
-                padding: '0.875rem 1.25rem',
-                border: '1.5px solid #E5E7EB',
-                borderRadius: 'var(--radius-lg)',
-                fontFamily: 'inherit',
-                fontWeight: 700,
-                outline: 'none',
-                backgroundColor: '#fff',
-                fontSize: '0.9rem',
-                color: 'var(--color-primary-dark)'
-              }}
-            />
+          <div style={iGrp}>
+            <label style={lSty}>To</label>
+            <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} style={dInp} />
           </div>
-
-          {/* Apply Button */}
-          <button style={{
-            width: '100%',
-            padding: '1rem',
-            backgroundColor: 'var(--color-primary-dark)',
-            color: '#fff',
-            borderRadius: 'var(--radius-lg)',
-            fontWeight: 800,
-            fontSize: '1rem',
-            border: 'none',
-            boxShadow: '0 4px 12px rgba(10, 38, 44, 0.2)',
-            transition: 'all 0.2s',
-            cursor: 'pointer'
-          }}>
-            Apply
+          <button onClick={fetchReportData} disabled={loading} style={dApply}>
+            {loading ? <Loader2 size={18} className="animate-spin" /> : 'Apply'}
           </button>
         </div>
       </div>
 
-      {/* Statement Preview Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-primary-dark)' }}>Statement Preview</h2>
-        <div style={{ display: 'flex', gap: '1.25rem' }}>
-          <button style={{ color: 'var(--color-text-muted)', cursor: 'pointer', background: 'none', border: 'none' }}><Share2 size={22} /></button>
-          <button style={{ 
-            color: '#fff',
-            backgroundColor: '#8B5CF6', 
-            padding: '0.45rem',
-            borderRadius: '10px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: 'none',
-            cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)'
-          }}>
-            <Download size={18} />
-          </button>
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.5rem', marginBottom: '3rem' }}>
+        <SummaryCard title="Total Income" value={reportData.income} color="#10b981" />
+        <SummaryCard title="Total Expense" value={reportData.expense} color="#ef4444" />
+        <SummaryCard title="Net Profit" value={reportData.profit} color="#111827" bg="linear-gradient(135deg, #82CD00, #E4EE00)" />
       </div>
 
-      {/* Statement List */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-        {statements.map((stmt, i) => (
-          <div key={i} style={{
-            backgroundColor: 'var(--color-primary-dark)',
-            color: '#fff',
-            padding: '1.75rem',
-            borderRadius: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '1.5rem',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-            cursor: 'pointer',
-            transition: 'transform 0.2s'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.01)'}
-          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-          >
-            <div style={{ 
-              backgroundColor: 'rgba(255,255,255,0.15)', 
-              color: '#fff',
-              padding: '0.45rem 0.85rem', 
-              borderRadius: '8px',
-              fontSize: '0.85rem',
-              fontWeight: 800,
-              letterSpacing: '1px'
-            }}>
-              PDF
+      <div style={{ display: 'flex', gap: '2rem' }}>
+        <div style={{ flex: 1.5 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#111827' }}>Statement Preview</h2>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              <Share2 size={24} style={{ color: '#64748b', cursor: 'pointer' }} />
+              <div onClick={() => downloadPDF('Custom Statement', fromDate, toDate, reportData.transactions)} style={dPurpBtn}>
+                <Download size={20} />
+              </div>
             </div>
-            <span style={{ fontWeight: 700, fontSize: '1.05rem' }}>{stmt.title}</span>
           </div>
-        ))}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {reportData.transactions.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '4rem', color: '#64748b', backgroundColor: '#fff', borderRadius: '24px', border: '1px dashed #e5e7eb' }}>
+                Select a date range and click Apply to preview transactions.
+              </div>
+            ) : (
+              reportData.transactions.map((t, i) => (
+                <div key={i} style={dTxCard}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                    <div style={{ ...dIconBox, backgroundColor: t.type === 'Income' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)' }}>
+                      <FileText color={t.type === 'Income' ? '#10b981' : '#ef4444'} size={20} />
+                    </div>
+                    <div>
+                      <p style={{ fontWeight: 800, fontSize: '1rem' }}>{t.category}</p>
+                      <p style={{ fontSize: '0.85rem', color: '#64748b' }}>{t.date} • {t.customerName || t.description || 'General'}</p>
+                    </div>
+                  </div>
+                  <p style={{ fontWeight: 800, fontSize: '1.1rem', color: t.type === 'Income' ? '#10b981' : '#ef4444' }}>
+                    {t.type === 'Income' ? '+' : '-'} {t.amount}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div style={{ flex: 1 }}>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#111827', marginBottom: '2rem' }}>Monthly Archive</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {availableMonths.map((m, i) => (
+              <div key={i} onClick={() => {
+                const [month, year] = m.split(' ');
+                const monthIdx = new Date(`${month} 1 2026`).getMonth();
+                downloadPDF(`${m} Statement`, `${year}-${String(monthIdx+1).padStart(2,'0')}-01`, `${year}-${String(monthIdx+1).padStart(2,'0')}-31`);
+              }} style={dStmtItem}>
+                <div style={dPdfTag}>PDF</div>
+                <span style={{ fontWeight: 800, fontSize: '1rem' }}>{m}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-const rangeInputStyle = {
-  backgroundColor: '#D1D5DB',
-  color: '#333',
-  padding: '10px 15px',
-  borderRadius: '10px',
-  fontSize: '13px',
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center'
-};
+function SummaryItem({ label, value, color, isBig }) {
+  return (
+    <div style={{ backgroundColor: 'rgba(255,255,255,0.05)', padding: '15px 20px', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <span style={{ fontSize: '14px', opacity: 0.8 }}>{label}</span>
+      <span style={{ fontSize: isBig ? '24px' : '18px', fontWeight: 800, color }}>$ {value.toLocaleString()}</span>
+    </div>
+  );
+}
 
-const actionButtonStyle = {
-  backgroundColor: 'rgba(255,255,255,0.05)',
-  padding: '8px',
-  borderRadius: '8px',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  border: 'none',
-  cursor: 'pointer'
-};
+function SummaryCard({ title, value, color, bg = '#fff' }) {
+  return (
+    <div style={{ background: bg, padding: '2rem 1.75rem', borderRadius: '24px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', border: bg === '#fff' ? '1px solid #f1f5f9' : 'none' }}>
+      <p style={{ fontSize: '0.9rem', fontWeight: 700, color: bg === '#fff' ? '#64748b' : 'rgba(10,38,44,0.7)', marginBottom: '0.75rem' }}>{title}</p>
+      <h2 style={{ fontSize: '2rem', fontWeight: 800, color, margin: 0 }}>$ {value.toLocaleString()}</h2>
+    </div>
+  );
+}
 
+// Styles
+const mInput = { backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px', color: '#fff', width: '100%', fontSize: '13px' };
+const mApply = { width: '100%', padding: '12px', backgroundColor: '#0a262c', color: '#fff', borderRadius: '12px', fontWeight: 800, border: '1px solid #1a3a3e', cursor: 'pointer', display: 'flex', justifyContent: 'center' };
+const actBtn = { background: 'none', border: 'none', cursor: 'pointer' };
+const purpBtn = { backgroundColor: '#8B5CF6', padding: '6px', borderRadius: '8px', border: 'none', color: '#fff', cursor: 'pointer', boxShadow: '2px 2px 10px rgba(139, 92, 246, 0.4)' };
+const mStmtItem = { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: '16px', padding: '18px', display: 'flex', alignItems: 'center', gap: '15px' };
+const pdfTag = { backgroundColor: '#fff', padding: '6px 8px', borderRadius: '8px', color: '#000', display: 'flex', flexDirection: 'column', alignItems: 'center' };
+const mTxCard = { backgroundColor: 'rgba(255,255,255,0.05)', padding: '15px', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
+const dCard = { backgroundColor: '#fff', padding: '2.5rem', borderRadius: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', marginBottom: '3.5rem', border: '1px solid #f1f5f9' };
+const iGrp = { display: 'flex', flexDirection: 'column', gap: '0.85rem' };
+const lSty = { fontWeight: 800, fontSize: '0.9rem', color: '#0a262c' };
+const dInp = { padding: '0.875rem 1.25rem', border: '1.5px solid #E5E7EB', borderRadius: '12px', fontWeight: 700, outline: 'none', backgroundColor: '#fff', fontSize: '0.9rem', color: '#0a262c' };
+const dApply = { width: '100%', padding: '1rem', backgroundColor: '#0a262c', color: '#fff', borderRadius: '12px', fontWeight: 800, border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'center', gap: '10px' };
+const dPurpBtn = { backgroundColor: '#8B5CF6', padding: '0.6rem', borderRadius: '14px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 5px 15px rgba(139, 92, 246, 0.4)' };
+const dStmtItem = { backgroundColor: '#0a262c', color: '#fff', padding: '1.25rem 1.5rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '1.5rem', cursor: 'pointer', transition: '0.2s' };
+const dPdfTag = { backgroundColor: 'rgba(255,255,255,0.1)', color: '#fff', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 900 };
+const dTxCard = { backgroundColor: '#fff', padding: '1.5rem', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', border: '1px solid #f8fafc' };
+const dIconBox = { padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' };
