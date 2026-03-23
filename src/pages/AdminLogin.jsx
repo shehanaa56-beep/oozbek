@@ -21,7 +21,7 @@ export default function AdminLogin() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    const result = await login(email, password);
+    const result = await login(email.trim(), password);
     if (result.success && result.isAdmin) {
       navigate('/user-management');
     } else {

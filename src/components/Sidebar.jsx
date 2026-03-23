@@ -39,7 +39,9 @@ export default function Sidebar() {
       padding: '2.5rem 1.5rem',
       height: '100vh',
       transition: 'var(--transition-normal)',
-      borderRight: '1px solid rgba(0,0,0,0.03)'
+      borderRight: '1px solid rgba(0,0,0,0.03)',
+      position: 'sticky',
+      top: 0
     }}>
       {/* Logo Area */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '3.5rem', paddingLeft: '0.5rem' }}>
@@ -68,8 +70,24 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Navigation Links */}
-      <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+      {/* Navigation Links - Scrollable Area */}
+      <nav style={{ 
+        flex: 1, 
+        display: 'flex', 
+        flexDirection: 'column', 
+        gap: '0.65rem',
+        overflowY: 'auto',
+        paddingRight: '0.5rem',
+        marginRight: '-0.5rem',
+        msOverflowStyle: 'none',  /* IE and Edge */
+        scrollbarWidth: 'none'    /* Firefox */
+      }}>
+        {/* Hide scrollbar for Chrome, Safari and Opera */}
+        <style>{`
+          nav::-webkit-scrollbar {
+            display: none;
+          }
+        `}</style>
         {navItems.filter(item => !item.adminOnly || isSuperAdmin).map((item) => (
           <div key={item.name}>
             {item.subItems ? (
@@ -184,27 +202,31 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* Logout Button */}
-      <button 
-        onClick={handleLogout}
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem',
-          padding: '1rem',
-          backgroundColor: 'var(--color-primary-dark)',
-          color: '#fff',
-          borderRadius: 'var(--radius-lg)',
-          fontWeight: 700,
-          marginTop: 'auto',
-          fontSize: '1rem',
-          transition: 'transform 0.2s ease',
-          boxShadow: '0 4px 12px rgba(10, 38, 44, 0.2)'
-        }}
-        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-      >
-        <LogOut size={20} />
-        Logout
-      </button>
+      {/* Logout Button - Pinned at bottom */}
+      <div style={{ paddingTop: '1.5rem', marginTop: '1rem', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+        <button 
+          onClick={handleLogout}
+          style={{
+            width: '100%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem',
+            padding: '1rem',
+            backgroundColor: 'var(--color-primary-dark)',
+            color: '#fff',
+            borderRadius: 'var(--radius-lg)',
+            fontWeight: 700,
+            fontSize: '1rem',
+            transition: 'transform 0.2s ease',
+            boxShadow: '0 4px 12px rgba(10, 38, 44, 0.2)',
+            border: 'none',
+            cursor: 'pointer'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+          onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+        >
+          <LogOut size={20} />
+          Logout
+        </button>
+      </div>
 
     </aside>
   );

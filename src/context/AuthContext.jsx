@@ -13,7 +13,7 @@ import { auth, db } from '../firebase';
 
 const AuthContext = createContext();
 
-const SUPER_ADMIN_EMAIL = "oozbekautomotive@gamil.com";
+const SUPER_ADMIN_EMAIL = "oozbekautomotive@gmail.com";
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -46,6 +46,7 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     try {
+      console.log(`[Diagnostic] Attempting login for: "${email}"`);
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
       
@@ -61,7 +62,11 @@ export function AuthProvider({ children }) {
       
       return { success: true, isAdmin: isSuper };
     } catch (error) {
-      console.error("Login Error:", error);
+      console.error("Login Error Diagnostic:", {
+        email: `"${email}"`,
+        code: error.code,
+        message: error.message
+      });
       let message = "An error occurred during login.";
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         message = "Invalid email or password";
