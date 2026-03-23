@@ -11,7 +11,6 @@ export default function Reports() {
   const [reportData, setReportData] = useState({ income: 0, expense: 0, profit: 0, transactions: [] });
   const [availableMonths, setAvailableMonths] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [archiving, setArchiving] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   useEffect(() => {
@@ -170,10 +169,14 @@ export default function Reports() {
       } else {
         ti = reportData.income;
         te = reportData.expense;
-        txs = transactions.map(t => ({
-          ...t,
-          amountValue: typeof t.amount === 'string' ? (parseFloat(t.amount.replace(/[^0-9.]/g, '')) || 0) : t.amount
-        }));
+        txs = transactions.map(t => {
+          const rawAmount = typeof t.amount === 'string' ? t.amount : String(t.amount || 0);
+          const numericAmount = parseFloat(rawAmount.replace(/[^0-9.]/g, '')) || 0;
+          return {
+            ...t,
+            amountValue: numericAmount
+          };
+        });
       }
 
       const doc = new jsPDF();
@@ -213,42 +216,15 @@ export default function Reports() {
       });
 
       doc.save(`Oozbek_${title.replace(/\s+/g, '_')}.pdf`);
+    } catch (e) {
+      console.error("PDF Generation Error:", e);
+      alert('Failed to generate PDF. Please check the console for details.');
     } finally {
       setLoading(false);
     }
   };
 
-  const archiveReport = async () => {
-    if (reportData.transactions.length === 0) {
-      alert('No data to archive. Please apply a date range first.');
-      return;
-    }
-    
-    const title = getRangeTitle(fromDate, toDate);
-    if (!window.confirm(`Archive "${title}" to admin panel?`)) return;
-    
-    setArchiving(true);
-    try {
-      await addDoc(collection(db, 'reports_archive'), {
-        title,
-        fromDate,
-        toDate,
-        summary: {
-          income: reportData.income,
-          expense: reportData.expense,
-          profit: reportData.profit
-        },
-        transactions: reportData.transactions,
-        createdAt: serverTimestamp()
-      });
-      alert('Report archived successfully!');
-    } catch (e) {
-      console.error(e);
-      alert('Failed to archive report.');
-    } finally {
-      setArchiving(false);
-    }
-  };
+
 
   const isMobile = windowWidth <= 768;
 
@@ -276,9 +252,6 @@ export default function Reports() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <h2 style={{ fontSize: '18px', fontWeight: 800 }}>{getRangeTitle(fromDate, toDate)}</h2>
             <div style={{ display: 'flex', gap: '10px' }}>
-               <button onClick={archiveReport} disabled={archiving} style={mSaveBtn} title="Archive to Admin">
-                 {archiving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} color="var(--primary-bright)" />}
-               </button>
                <button onClick={() => handleShare(getRangeTitle(fromDate, toDate), fromDate, toDate)} style={actBtn} title="Share"><Share2 size={18} color="var(--primary-bright)" /></button>
                <button onClick={() => downloadPDF(getRangeTitle(fromDate, toDate), fromDate, toDate, reportData.transactions)} style={purpBtn} title="Download"><Download size={18} /></button>
             </div>
@@ -361,14 +334,6 @@ export default function Reports() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#111827' }}>{getRangeTitle(fromDate, toDate)}</h2>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-              <button 
-                onClick={archiveReport} 
-                disabled={archiving}
-                style={{ ...dGhostBtn, color: archiving ? '#94a3b8' : '#10b981' }}
-                title="Archive to Admin Panel"
-              >
-                {archiving ? <Loader2 size={24} className="animate-spin" /> : <Save size={24} />}
-              </button>
               <Share2 size={24} onClick={() => handleShare(getRangeTitle(fromDate, toDate), fromDate, toDate)} style={{ color: '#64748b', cursor: 'pointer' }} />
               <div onClick={() => downloadPDF(getRangeTitle(fromDate, toDate), fromDate, toDate, reportData.transactions)} style={dPurpBtn} title="Download PDF">
                 <Download size={20} />

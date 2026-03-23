@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Database, FileText, UserCircle, LogOut, Archive, Users } from 'lucide-react';
+import { Home, Database, FileText, UserCircle, LogOut, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
 
@@ -15,7 +15,7 @@ const navItems = [
     ]
   },
   { name: 'Reports', path: '/reports', icon: FileText },
-  { name: 'Reports Archive', path: '/reports-archive', icon: Archive, adminOnly: true },
+
   { name: 'User Management', path: '/user-management', icon: Users, adminOnly: true },
   { name: 'Profile', path: '/profile', icon: UserCircle },
 ];

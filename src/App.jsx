@@ -12,7 +12,7 @@ import Reports from './pages/Reports';
 import Profile from './pages/Profile';
 import AdminLogin from './pages/AdminLogin';
 import UserManagement from './pages/UserManagement';
-import AdminReports from './pages/AdminReports';
+
 
 function ProtectedAdminRoute({ children }) {
   const { isAuthenticated, isSuperAdmin } = useAuth();
@@ -44,14 +44,6 @@ function App() {
                 element={
                   <ProtectedAdminRoute>
                     <UserManagement />
-                  </ProtectedAdminRoute>
-                } 
-              />
-              <Route 
-                path="reports-archive" 
-                element={
-                  <ProtectedAdminRoute>
-                    <AdminReports />
                   </ProtectedAdminRoute>
                 } 
               />
