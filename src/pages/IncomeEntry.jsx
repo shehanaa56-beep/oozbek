@@ -26,7 +26,7 @@ export default function IncomeEntry() {
   const [customerName, setCustomerName] = useState('');
   const [vehicleDetails, setVehicleDetails] = useState('');
   const [phoneNo, setPhoneNo] = useState('');
-  const [category, setCategory] = useState('Polish');
+  const [category, setCategory] = useState('Wrapping');
   const [paymentType, setPaymentType] = useState('CASH');
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
@@ -149,8 +149,21 @@ export default function IncomeEntry() {
               value={category}
               onChange={(e) => setCategory(e.target.value)}
             >
-              <option value="Polish">Polish</option>
-              <option value="Wash">Wash</option>
+              <option value="Wrapping">Wrapping</option>
+              <option value="Graphics">Graphics</option>
+              <option value="Sticker Work">Sticker Work</option>
+              <option value="Cooling Film">Cooling Film</option>
+              <option value="Lamination">Lamination</option>
+              <option value="Detailing">Detailing</option>
+              <option value="Ceramic Coating">Ceramic Coating</option>
+              <option value="Graphene Coating">Graphene Coating</option>
+              <option value="Borophane Coating">Borophane Coating</option>
+              <option value="Paint Protection Film">Paint Protection Film</option>
+              <option value="Premium Car Wash">Premium Car Wash</option>
+              <option value="Polishing">Polishing</option>
+              <option value="Detailing Wash">Detailing Wash</option>
+              <option value="Steam Wash">Steam Wash</option>
+              <option value="Head Light Restoration">Head Light Restoration</option>
             </select>
             <select 
               style={mobileInputStyle} 
@@ -270,8 +283,21 @@ export default function IncomeEntry() {
               fontWeight: 500,
               color: '#4B5563'
             }}>
-            <option value="Polish">Polish</option>
-            <option value="Wash">Wash</option>
+            <option value="Wrapping">Wrapping</option>
+            <option value="Graphics">Graphics</option>
+            <option value="Sticker Work">Sticker Work</option>
+            <option value="Cooling Film">Cooling Film</option>
+            <option value="Lamination">Lamination</option>
+            <option value="Detailing">Detailing</option>
+            <option value="Ceramic Coating">Ceramic Coating</option>
+            <option value="Graphene Coating">Graphene Coating</option>
+            <option value="Borophane Coating">Borophane Coating</option>
+            <option value="Paint Protection Film">Paint Protection Film</option>
+            <option value="Premium Car Wash">Premium Car Wash</option>
+            <option value="Polishing">Polishing</option>
+            <option value="Detailing Wash">Detailing Wash</option>
+            <option value="Steam Wash">Steam Wash</option>
+            <option value="Head Light Restoration">Head Light Restoration</option>
           </select>
         </div>
         
