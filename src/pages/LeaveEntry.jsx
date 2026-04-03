@@ -9,24 +9,25 @@ const COLUMNS = (handleEdit, handleDelete) => [
   { header: 'Date', field: 'date' },
   { header: 'Salesman Name', field: 'salesmanName' },
   { header: 'Phone No', field: 'phoneNo' },
-  { 
-    header: 'Total Leave', 
+  {
+    header: 'Total Leave',
     field: 'totalLeave',
-    render: (val) => <span style={{ color: 'var(--color-primary-green)' }}>{val}</span> 
+    render: (val) => <span style={{ color: 'var(--color-primary-green)' }}>{val}</span>
   },
   { header: 'Salary Pending', field: 'salaryPending' },
+  { header: 'Advance', field: 'advance' },
   {
     header: 'Actions',
     field: 'actions',
     render: (_, row) => (
       <div style={{ display: 'flex', gap: '0.75rem' }}>
-        <button 
+        <button
           onClick={() => handleEdit(row)}
           style={{ border: 'none', background: 'none', padding: '5px', cursor: 'pointer', color: '#4B5563' }}
         >
           <Pencil size={18} />
         </button>
-        <button 
+        <button
           onClick={() => handleDelete(row.id)}
           style={{ border: 'none', background: 'none', padding: '5px', cursor: 'pointer', color: '#EF4444' }}
         >
@@ -44,6 +45,7 @@ export default function LeaveEntry() {
   const [phoneNo, setPhoneNo] = useState('');
   const [totalLeave, setTotalLeave] = useState('');
   const [salaryPending, setSalaryPending] = useState('');
+  const [advance, setAdvance] = useState('');
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -73,6 +75,7 @@ export default function LeaveEntry() {
     setPhoneNo(item.phoneNo);
     setTotalLeave(item.totalLeave);
     setSalaryPending(item.salaryPending.replace('₹ ', ''));
+    setAdvance(item.advance ? item.advance.replace('₹ ', '') : '');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -103,6 +106,7 @@ export default function LeaveEntry() {
         phoneNo,
         totalLeave: Number(totalLeave),
         salaryPending: `₹ ${salaryPending}`,
+        advance: advance ? `₹ ${advance}` : '₹ 0',
         updatedAt: new Date().toISOString()
       };
 
@@ -124,6 +128,7 @@ export default function LeaveEntry() {
       setPhoneNo('');
       setTotalLeave('');
       setSalaryPending('');
+      setAdvance('');
     } catch (error) {
       console.error("Error saving leave record:", error);
       alert("Failed to save record.");
@@ -150,9 +155,9 @@ export default function LeaveEntry() {
               <div style={{ width: '3px', height: '18px', backgroundColor: 'var(--color-primary-green)', borderRadius: '4px' }}></div>
               <h2 style={{ fontSize: '16px', fontWeight: 600 }}>Leave Entry</h2>
             </div>
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
               gap: '8px',
               backgroundColor: 'rgba(255,255,255,0.05)',
               padding: '6px 12px',
@@ -164,32 +169,38 @@ export default function LeaveEntry() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <input 
-              placeholder="Enter Salesman Name" 
-              style={mobileInputStyle} 
+            <input
+              placeholder="Enter Salesman Name"
+              style={mobileInputStyle}
               value={salesmanName}
               onChange={(e) => setSalesmanName(e.target.value)}
             />
-            <input 
-              placeholder="Enter Phone Number" 
-              style={mobileInputStyle} 
+            <input
+              placeholder="Enter Phone Number"
+              style={mobileInputStyle}
               value={phoneNo}
               onChange={(e) => setPhoneNo(e.target.value)}
             />
-            <input 
-              placeholder="Enter Total Leave" 
-              style={mobileInputStyle} 
+            <input
+              placeholder="Enter Total Leave"
+              style={mobileInputStyle}
               value={totalLeave}
               onChange={(e) => setTotalLeave(e.target.value)}
             />
-            <input 
-              placeholder="Enter Salary Pending" 
-              style={mobileInputStyle} 
+            <input
+              placeholder="Enter Salary Pending"
+              style={mobileInputStyle}
               value={salaryPending}
               onChange={(e) => setSalaryPending(e.target.value)}
             />
-            
-            <button 
+            <input
+              placeholder="Enter Advance"
+              style={mobileInputStyle}
+              value={advance}
+              onChange={(e) => setAdvance(e.target.value)}
+            />
+
+            <button
               onClick={handleSubmit}
               disabled={loading}
               style={{
@@ -236,13 +247,13 @@ export default function LeaveEntry() {
                     <div style={{ textAlign: 'right' }}>
                       <p style={{ fontSize: '16px', fontWeight: 800, color: '#fb7185' }}>{item.salaryPending}</p>
                       <div style={{ display: 'flex', gap: '10px', marginTop: '8px', justifyContent: 'flex-end' }}>
-                        <button 
+                        <button
                           onClick={() => handleEdit(item)}
                           style={{ border: 'none', background: 'none', color: 'var(--mobile-text-dim)' }}
                         >
                           <Pencil size={14} />
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleDelete(item.id)}
                           style={{ border: 'none', background: 'none', color: '#fb7185' }}
                         >
@@ -265,13 +276,13 @@ export default function LeaveEntry() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
         <h1 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 800, color: 'var(--color-primary-dark)' }}>Leave Entry</h1>
       </div>
-      
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3rem' }}>
         {/* Date Picker */}
         <div style={{ display: 'inline-block', position: 'relative' }}>
           <label style={{ display: 'block', fontWeight: 800, fontSize: '0.85rem', marginBottom: '0.75rem', color: 'var(--color-primary-dark)' }}>Date</label>
-          <input 
-            type="date" 
+          <input
+            type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
             style={{
@@ -293,42 +304,51 @@ export default function LeaveEntry() {
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', flex: 1, marginLeft: '2rem', justifyContent: 'flex-end', alignItems: 'flex-end' }}>
           <div style={inlineField}>
             <label style={inlineLabel}>Salesman</label>
-            <input 
-              placeholder="Name" 
-              style={inlineInput} 
-              value={salesmanName} 
-              onChange={e => setSalesmanName(e.target.value)} 
+            <input
+              placeholder="Name"
+              style={inlineInput}
+              value={salesmanName}
+              onChange={e => setSalesmanName(e.target.value)}
             />
           </div>
           <div style={inlineField}>
             <label style={inlineLabel}>Phone</label>
-            <input 
-              placeholder="Number" 
-              style={inlineInput} 
-              value={phoneNo} 
-              onChange={e => setPhoneNo(e.target.value)} 
+            <input
+              placeholder="Number"
+              style={inlineInput}
+              value={phoneNo}
+              onChange={e => setPhoneNo(e.target.value)}
             />
           </div>
           <div style={inlineField}>
             <label style={inlineLabel}>Leaves</label>
-            <input 
-              placeholder="Count" 
-              style={inlineInput} 
-              value={totalLeave} 
-              onChange={e => setTotalLeave(e.target.value)} 
+            <input
+              placeholder="Count"
+              style={inlineInput}
+              value={totalLeave}
+              onChange={e => setTotalLeave(e.target.value)}
             />
           </div>
           <div style={inlineField}>
             <label style={inlineLabel}>Pending</label>
-            <input 
-              placeholder="Amount" 
-              style={inlineInput} 
-              value={salaryPending} 
-              onChange={e => setSalaryPending(e.target.value)} 
+            <input
+              placeholder="Amount"
+              style={inlineInput}
+              value={salaryPending}
+              onChange={e => setSalaryPending(e.target.value)}
             />
           </div>
-          
-          <button 
+          <div style={inlineField}>
+            <label style={inlineLabel}>Advance</label>
+            <input
+              placeholder="Amount"
+              style={inlineInput}
+              value={advance}
+              onChange={e => setAdvance(e.target.value)}
+            />
+          </div>
+
+          <button
             onClick={handleSubmit}
             disabled={loading}
             style={{
@@ -336,7 +356,7 @@ export default function LeaveEntry() {
               alignItems: 'center',
               gap: '0.75rem',
               padding: '0.875rem 1.75rem',
-              backgroundColor: loading ? '#6B7280' : 'var(--color-primary-dark)', 
+              backgroundColor: loading ? '#6B7280' : 'var(--color-primary-dark)',
               color: '#fff',
               borderRadius: 'var(--radius-lg)',
               fontWeight: 700,
@@ -346,15 +366,15 @@ export default function LeaveEntry() {
               transition: 'all 0.2s',
               cursor: loading ? 'not-allowed' : 'pointer'
             }}>
-            <span style={{ 
+            <span style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               width: '18px', height: '18px', borderRadius: '50%', border: '2px solid #fff', fontSize: '12px', fontWeight: 800
             }}>{isEditing ? '✓' : '+'}</span>
             {loading ? (isEditing ? 'Updating...' : 'Adding...') : (isEditing ? 'Update' : 'Add Record')}
           </button>
-          
+
           {isEditing && (
-            <button 
+            <button
               onClick={() => {
                 setIsEditing(false);
                 setEditId(null);
@@ -362,6 +382,7 @@ export default function LeaveEntry() {
                 setPhoneNo('');
                 setTotalLeave('');
                 setSalaryPending('');
+                setAdvance('');
               }}
               style={{
                 padding: '0.875rem 1.75rem',
@@ -397,7 +418,7 @@ const inlineInput = {
 };
 
 const mobileInputStyle = {
-  backgroundColor: '#D1D5DB', 
+  backgroundColor: '#D1D5DB',
   border: 'none',
   borderRadius: '10px',
   padding: '12px 16px',
