@@ -8,10 +8,11 @@ import {
   doc, 
   onSnapshot, 
   deleteDoc,
-  query
+  query,
+  updateDoc
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { UserPlus, Mail, Shield, Key, Trash2, Users } from 'lucide-react';
+import { UserPlus, Mail, Shield, Key, Trash2, Users, Pencil } from 'lucide-react';
 
 // Secondary Firebase App for creating users without signing out the current Admin
 // We use the same config but a different app name
@@ -36,6 +37,8 @@ export default function UserManagement() {
   const [role, setRole] = useState('Staff');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editEmail, setEditEmail] = useState('');
   const { searchQuery } = useSearch();
 
   // Fetch users from Firestore
@@ -52,30 +55,50 @@ export default function UserManagement() {
     return () => unsubscribe();
   }, []);
 
+  const handleEdit = (user) => {
+    setIsEditing(true);
+    setEditEmail(user.email);
+    setEmail(user.email);
+    setRole(user.role || 'Staff');
+    setPassword(''); // Password cannot be edited from this interface easily without old password
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      // 1. Create user in Firebase Auth using the secondary app
-      await createUserWithEmailAndPassword(secondaryAuth, email, password);
-      
-      // 2. Store user role/metadata in Firestore
-      await setDoc(doc(db, 'users', email), {
-        email,
-        role,
-        createdAt: new Date().toISOString()
-      });
+      if (isEditing) {
+        // Only update Firestore role (metadata), auth email/password needs deeper API handling
+        await updateDoc(doc(db, 'users', editEmail), {
+          role,
+          updatedAt: new Date().toISOString()
+        });
+        alert("User role updated successfully!");
+        setIsEditing(false);
+        setEditEmail('');
+      } else {
+        // 1. Create user in Firebase Auth using the secondary app
+        await createUserWithEmailAndPassword(secondaryAuth, email, password);
+        
+        // 2. Store user role/metadata in Firestore
+        await setDoc(doc(db, 'users', email), {
+          email,
+          role,
+          createdAt: new Date().toISOString()
+        });
+        alert("User account created successfully!");
+      }
 
       // Clear form
       setEmail('');
       setPassword('');
       setRole('Staff');
-      alert("User account created successfully!");
     } catch (err) {
-      console.error("Error creating user:", err);
-      setError(err.message || "Failed to create user.");
+      console.error("Error saving user:", err);
+      setError(err.message || "Failed to save user.");
     } finally {
       setLoading(false);
     }
@@ -112,7 +135,7 @@ export default function UserManagement() {
           height: 'fit-content'
         }}>
           <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <UserPlus size={18} color="var(--color-primary-green)" /> Add New Account
+            <UserPlus size={18} color="var(--color-primary-green)" /> {isEditing ? 'Update User Role' : 'Add New Account'}
           </h3>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -143,27 +166,29 @@ export default function UserManagement() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  style={inputStyle}
-                  disabled={loading}
+                  style={{...inputStyle, backgroundColor: isEditing ? '#F3F4F6' : '#fff'}}
+                  disabled={loading || isEditing}
                 />
               </div>
             </div>
 
-            <div style={fieldGroup}>
-              <label style={labelStyle}>Access Password</label>
-              <div style={{ position: 'relative' }}>
-                <Key size={18} style={iconStyle} />
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  style={inputStyle}
-                  disabled={loading}
-                />
+            {!isEditing && (
+              <div style={fieldGroup}>
+                <label style={labelStyle}>Access Password</label>
+                <div style={{ position: 'relative' }}>
+                  <Key size={18} style={iconStyle} />
+                  <input
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required={!isEditing}
+                    style={inputStyle}
+                    disabled={loading}
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             {error && <p style={{ color: '#EF4444', fontSize: '0.85rem', fontWeight: 600 }}>{error}</p>}
 
@@ -183,8 +208,35 @@ export default function UserManagement() {
                 boxShadow: '0 10px 20px rgba(10, 38, 44, 0.1)'
               }}
             >
-              {loading ? 'Creating...' : 'Create Account'}
+              {loading ? (isEditing ? 'Updating...' : 'Creating...') : (isEditing ? 'Update Role' : 'Create Account')}
             </button>
+            
+            {isEditing && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditing(false);
+                  setEditEmail('');
+                  setEmail('');
+                  setPassword('');
+                  setRole('Staff');
+                }}
+                disabled={loading}
+                style={{
+                  backgroundColor: 'transparent',
+                  color: '#6B7280',
+                  padding: '1.125rem',
+                  borderRadius: '16px',
+                  fontSize: '1rem',
+                  fontWeight: 700,
+                  border: '1.5px solid #E5E7EB',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  marginTop: '-0.5rem'
+                }}
+              >
+                Cancel Edit
+              </button>
+            )}
           </form>
         </div>
 
@@ -235,19 +287,34 @@ export default function UserManagement() {
                             <p style={{ margin: 0, fontSize: '0.85rem', color: '#6B7280' }}>Role: {u.role}</p>
                           </div>
                         </div>
-                        <button 
-                          onClick={() => handleDeleteUser(u.email)}
-                          style={{
-                            padding: '10px',
-                            borderRadius: '10px',
-                            border: 'none',
-                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                            color: '#EF4444',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <Trash2 size={18} />
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button 
+                            onClick={() => handleEdit(u)}
+                            style={{
+                              padding: '10px',
+                              borderRadius: '10px',
+                              border: 'none',
+                              backgroundColor: 'rgba(75, 85, 99, 0.1)',
+                              color: '#4B5563',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <Pencil size={18} />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteUser(u.email)}
+                            style={{
+                              padding: '10px',
+                              borderRadius: '10px',
+                              border: 'none',
+                              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                              color: '#EF4444',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
                       </div>
                     ))
                   )}

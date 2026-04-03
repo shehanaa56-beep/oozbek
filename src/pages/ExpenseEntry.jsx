@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useSearch } from '../context/SearchContext';
-import { Calendar } from 'lucide-react';
+import { Calendar, Trash2, Pencil } from 'lucide-react';
 import DataTable from '../components/DataTable';
-import { collection, addDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import EntryTabs from '../components/EntryTabs';
 
-const COLUMNS = [
+const COLUMNS = (handleEdit, handleDelete) => [
   { header: 'Date', field: 'date' },
   { header: 'Category', field: 'category' },
   { 
@@ -16,6 +16,26 @@ const COLUMNS = [
   },
   { header: 'Description', field: 'description' },
   { header: 'Amount', field: 'amount' },
+  {
+    header: 'Actions',
+    field: 'actions',
+    render: (_, row) => (
+      <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <button 
+          onClick={() => handleEdit(row)}
+          style={{ border: 'none', background: 'none', padding: '5px', cursor: 'pointer', color: '#4B5563' }}
+        >
+          <Pencil size={18} />
+        </button>
+        <button 
+          onClick={() => handleDelete(row.id)}
+          style={{ border: 'none', background: 'none', padding: '5px', cursor: 'pointer', color: '#EF4444' }}
+        >
+          <Trash2 size={18} />
+        </button>
+      </div>
+    )
+  }
 ];
 
 export default function ExpenseEntry() {
@@ -26,6 +46,8 @@ export default function ExpenseEntry() {
   const [paymentType, setPaymentType] = useState('CASH');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editId, setEditId] = useState(null);
   const { searchQuery } = useSearch();
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
@@ -45,6 +67,29 @@ export default function ExpenseEntry() {
     };
   }, []);
 
+  const handleEdit = (item) => {
+    setIsEditing(true);
+    setEditId(item.id);
+    setDate(item.date);
+    setCategory(item.category);
+    setAmount(item.amount.replace('₹ ', ''));
+    setPaymentType(item.paymentType);
+    setDescription(item.description);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm("Are you sure you want to delete this expense?")) {
+      try {
+        await deleteDoc(doc(db, 'expenses', id));
+        alert("Expense deleted successfully!");
+      } catch (error) {
+        console.error("Error deleting expense:", error);
+        alert("Failed to delete expense.");
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     if (!amount) {
@@ -54,22 +99,34 @@ export default function ExpenseEntry() {
 
     setLoading(true);
     try {
-      await addDoc(collection(db, 'expenses'), {
+      const data = {
         date,
         category,
         amount: `₹ ${amount}`,
         paymentType,
         description,
-        createdAt: new Date().toISOString()
-      });
+        updatedAt: new Date().toISOString()
+      };
+
+      if (isEditing) {
+        await updateDoc(doc(db, 'expenses', editId), data);
+        alert("Expense updated successfully!");
+        setIsEditing(false);
+        setEditId(null);
+      } else {
+        await addDoc(collection(db, 'expenses'), {
+          ...data,
+          createdAt: new Date().toISOString()
+        });
+        alert("Expense added successfully!");
+      }
 
       // Clear form
       setAmount('');
       setDescription('');
-      alert("Expense added successfully!");
     } catch (error) {
-      console.error("Error adding expense:", error);
-      alert("Failed to add expense.");
+      console.error("Error saving expense:", error);
+      alert("Failed to save expense.");
     } finally {
       setLoading(false);
     }
@@ -162,7 +219,7 @@ export default function ExpenseEntry() {
                 border: 'none',
                 cursor: loading ? 'not-allowed' : 'pointer'
               }}>
-              {loading ? 'Adding...' : 'Add'}
+              {loading ? (isEditing ? 'Updating...' : 'Adding...') : (isEditing ? 'Update' : 'Add')}
             </button>
           </div>
         </div>
@@ -188,7 +245,25 @@ export default function ExpenseEntry() {
                     <p style={{ fontSize: '11px', color: 'var(--mobile-text-dim)', marginTop: '4px' }}>{item.paymentType} • {item.description}</p>
                     <p style={{ fontSize: '11px', color: 'var(--mobile-text-dim)' }}>{item.date}</p>
                   </div>
-                  <p style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-primary-green)' }}>{item.amount}</p>
+                  <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <p style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-primary-green)' }}>{item.amount}</p>
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '8px', justifyContent: 'flex-end' }}>
+                        <button 
+                          onClick={() => handleEdit(item)}
+                          style={{ border: 'none', background: 'none', color: 'var(--mobile-text-dim)' }}
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(item.id)}
+                          style={{ border: 'none', background: 'none', color: '#fb7185' }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ))
             )}
@@ -334,13 +409,38 @@ export default function ExpenseEntry() {
           transition: 'all 0.2s',
           cursor: loading ? 'not-allowed' : 'pointer'
         }}>
-        {loading ? 'Adding...' : 'Add'}
+        {loading ? (isEditing ? 'Updating...' : 'Adding...') : (isEditing ? 'Update' : 'Add')}
       </button>
+
+      {isEditing && (
+        <button 
+          onClick={() => {
+            setIsEditing(false);
+            setEditId(null);
+            setAmount('');
+            setDescription('');
+          }}
+          style={{
+            width: '100%',
+            padding: '1.125rem',
+            backgroundColor: 'transparent',
+            color: '#6B7280',
+            borderRadius: 'var(--radius-lg)',
+            fontWeight: 700,
+            marginBottom: '4rem',
+            fontSize: '1rem',
+            border: '1.5px solid #E5E7EB',
+            cursor: 'pointer',
+            marginTop: '-3rem'
+          }}>
+          Cancel Edit
+        </button>
+      )}
 
       <div style={{ marginBottom: '1.5rem' }}>
         <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-primary-dark)' }}>Latest Entries</h3>
       </div>
-      <DataTable columns={COLUMNS} data={filteredEntries} />
+      <DataTable columns={COLUMNS(handleEdit, handleDelete)} data={filteredEntries} />
     </div>
   );
 }

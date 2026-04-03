@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Calendar, UserPlus } from 'lucide-react';
+import { Calendar, UserPlus, Trash2, Pencil } from 'lucide-react';
 import DataTable from '../components/DataTable';
-import { collection, addDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import EntryTabs from '../components/EntryTabs';
 
-const COLUMNS = [
+const COLUMNS = (handleEdit, handleDelete) => [
   { header: 'Date', field: 'date' },
   { header: 'Salesman Name', field: 'salesmanName' },
   { header: 'Phone No', field: 'phoneNo' },
@@ -15,6 +15,26 @@ const COLUMNS = [
     render: (val) => <span style={{ color: 'var(--color-primary-green)' }}>{val}</span> 
   },
   { header: 'Salary Pending', field: 'salaryPending' },
+  {
+    header: 'Actions',
+    field: 'actions',
+    render: (_, row) => (
+      <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <button 
+          onClick={() => handleEdit(row)}
+          style={{ border: 'none', background: 'none', padding: '5px', cursor: 'pointer', color: '#4B5563' }}
+        >
+          <Pencil size={18} />
+        </button>
+        <button 
+          onClick={() => handleDelete(row.id)}
+          style={{ border: 'none', background: 'none', padding: '5px', cursor: 'pointer', color: '#EF4444' }}
+        >
+          <Trash2 size={18} />
+        </button>
+      </div>
+    )
+  }
 ];
 
 export default function LeaveEntry() {
@@ -25,6 +45,8 @@ export default function LeaveEntry() {
   const [totalLeave, setTotalLeave] = useState('');
   const [salaryPending, setSalaryPending] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editId, setEditId] = useState(null);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   useEffect(() => {
@@ -43,6 +65,29 @@ export default function LeaveEntry() {
     };
   }, []);
 
+  const handleEdit = (item) => {
+    setIsEditing(true);
+    setEditId(item.id);
+    setDate(item.date);
+    setSalesmanName(item.salesmanName);
+    setPhoneNo(item.phoneNo);
+    setTotalLeave(item.totalLeave);
+    setSalaryPending(item.salaryPending.replace('₹ ', ''));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm("Are you sure you want to delete this record?")) {
+      try {
+        await deleteDoc(doc(db, 'leaves', id));
+        alert("Record deleted successfully!");
+      } catch (error) {
+        console.error("Error deleting record:", error);
+        alert("Failed to delete record.");
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     if (!salesmanName || !totalLeave) {
@@ -52,24 +97,36 @@ export default function LeaveEntry() {
 
     setLoading(true);
     try {
-      await addDoc(collection(db, 'leaves'), {
+      const data = {
         date,
         salesmanName,
         phoneNo,
         totalLeave: Number(totalLeave),
-        salaryPending: `$ ${salaryPending}`,
-        createdAt: new Date().toISOString()
-      });
+        salaryPending: `₹ ${salaryPending}`,
+        updatedAt: new Date().toISOString()
+      };
+
+      if (isEditing) {
+        await updateDoc(doc(db, 'leaves', editId), data);
+        alert("Leave record updated successfully!");
+        setIsEditing(false);
+        setEditId(null);
+      } else {
+        await addDoc(collection(db, 'leaves'), {
+          ...data,
+          createdAt: new Date().toISOString()
+        });
+        alert("Leave record added successfully!");
+      }
 
       // Clear form
       setSalesmanName('');
       setPhoneNo('');
       setTotalLeave('');
       setSalaryPending('');
-      alert("Leave record added successfully!");
     } catch (error) {
-      console.error("Error adding leave record:", error);
-      alert("Failed to add record.");
+      console.error("Error saving leave record:", error);
+      alert("Failed to save record.");
     } finally {
       setLoading(false);
     }
@@ -150,7 +207,7 @@ export default function LeaveEntry() {
                 justifyContent: 'center',
                 gap: '8px'
               }}>
-              <UserPlus size={18} /> {loading ? 'Adding...' : 'Add Record'}
+              <UserPlus size={18} /> {loading ? (isEditing ? 'Updating...' : 'Adding...') : (isEditing ? 'Update Record' : 'Add Record')}
             </button>
           </div>
         </div>
@@ -175,7 +232,25 @@ export default function LeaveEntry() {
                     <p style={{ fontSize: '14px', fontWeight: 700 }}>{item.salesmanName}</p>
                     <p style={{ fontSize: '11px', color: 'var(--mobile-text-dim)', marginTop: '4px' }}>Leaves: {item.totalLeave} • {item.phoneNo}</p>
                   </div>
-                  <p style={{ fontSize: '16px', fontWeight: 800, color: '#fb7185' }}>{item.salaryPending}</p>
+                  <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <p style={{ fontSize: '16px', fontWeight: 800, color: '#fb7185' }}>{item.salaryPending}</p>
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '8px', justifyContent: 'flex-end' }}>
+                        <button 
+                          onClick={() => handleEdit(item)}
+                          style={{ border: 'none', background: 'none', color: 'var(--mobile-text-dim)' }}
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(item.id)}
+                          style={{ border: 'none', background: 'none', color: '#fb7185' }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ))
             )}
@@ -261,7 +336,7 @@ export default function LeaveEntry() {
               alignItems: 'center',
               gap: '0.75rem',
               padding: '0.875rem 1.75rem',
-              backgroundColor: loading ? '#6B7280' : '#1F2937', 
+              backgroundColor: loading ? '#6B7280' : 'var(--color-primary-dark)', 
               color: '#fff',
               borderRadius: 'var(--radius-lg)',
               fontWeight: 700,
@@ -274,13 +349,37 @@ export default function LeaveEntry() {
             <span style={{ 
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               width: '18px', height: '18px', borderRadius: '50%', border: '2px solid #fff', fontSize: '12px', fontWeight: 800
-            }}>+</span>
-            {loading ? 'Adding...' : 'Add Record'}
+            }}>{isEditing ? '✓' : '+'}</span>
+            {loading ? (isEditing ? 'Updating...' : 'Adding...') : (isEditing ? 'Update' : 'Add Record')}
           </button>
+          
+          {isEditing && (
+            <button 
+              onClick={() => {
+                setIsEditing(false);
+                setEditId(null);
+                setSalesmanName('');
+                setPhoneNo('');
+                setTotalLeave('');
+                setSalaryPending('');
+              }}
+              style={{
+                padding: '0.875rem 1.75rem',
+                backgroundColor: 'transparent',
+                color: '#6B7280',
+                borderRadius: 'var(--radius-lg)',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                border: '1.5px solid #E5E7EB',
+                cursor: 'pointer'
+              }}>
+              Cancel
+            </button>
+          )}
         </div>
       </div>
 
-      <DataTable columns={COLUMNS} data={entries} />
+      <DataTable columns={COLUMNS(handleEdit, handleDelete)} data={entries} />
     </div>
   );
 }
