@@ -16,8 +16,22 @@ const COLUMNS = (handleEdit, handleDelete) => [
     field: 'paymentType',
     render: (val) => <span style={{ color: 'var(--color-primary-green)' }}>{val}</span>
   },
-  { header: 'Category', field: 'category' },
-  { header: 'Amount', field: 'amount' },
+  {
+    header: 'Category',
+    field: 'category',
+    render: (val, row) => row.items ? row.items.map(i => i.category).join(', ') : val
+  },
+  {
+    header: 'Amount',
+    field: 'amount',
+    render: (val, row) => {
+      if (row.items) {
+        const total = row.items.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+        return `₹ ${total}`;
+      }
+      return val;
+    }
+  },
   {
     header: 'Actions',
     field: 'actions',
@@ -46,9 +60,8 @@ export default function IncomeEntry() {
   const [customerName, setCustomerName] = useState('');
   const [vehicleDetails, setVehicleDetails] = useState('');
   const [phoneNo, setPhoneNo] = useState('');
-  const [category, setCategory] = useState('Wrapping');
+  const [items, setItems] = useState([{ category: 'Wrapping', price: '' }]);
   const [paymentType, setPaymentType] = useState('CASH');
-  const [amount, setAmount] = useState('');
   const [address, setAddress] = useState('');
   const [email, setEmail] = useState('');
   const [discount, setDiscount] = useState('');
@@ -82,9 +95,12 @@ export default function IncomeEntry() {
     setCustomerName(item.customerName);
     setVehicleDetails(item.vehicleDetails);
     setPhoneNo(item.phoneNo);
-    setCategory(item.category);
+    if (item.items) {
+      setItems(item.items);
+    } else {
+      setItems([{ category: item.category, price: item.amount.replace('₹ ', '') }]);
+    }
     setPaymentType(item.paymentType);
-    setAmount(item.amount.replace('₹ ', ''));
     setAddress(item.address || '');
     setEmail(item.email || '');
     setDiscount(item.discount || '');
@@ -92,15 +108,24 @@ export default function IncomeEntry() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const addItem = () => setItems([...items, { category: 'Wrapping', price: '' }]);
+  const removeItem = (idx) => setItems(items.filter((_, i) => i !== idx));
+  const updateItem = (idx, field, val) => {
+    const newItems = [...items];
+    newItems[idx][field] = val;
+    setItems(newItems);
+  };
+
   const handlePrint = () => {
     // Basic validation before print
-    if (!customerName || !amount) {
-      alert("Please fill in Customer Name and Amount before printing.");
+    const totalAmount = items.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+
+    if (!customerName || totalAmount <= 0) {
+      alert("Please fill in Customer Name and at least one service with price.");
       return;
     }
 
     const deliveryNo = Math.floor(1000 + Math.random() * 9000); // Random for now
-    const totalAmount = parseFloat(amount) || 0;
     const discountVal = parseFloat(discount) || 0;
     const advanceVal = parseFloat(advance) || 0;
     const balanceVal = totalAmount - discountVal - advanceVal;
@@ -365,13 +390,15 @@ export default function IncomeEntry() {
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td>1</td>
-                  <td style="text-align: left;">${category}</td>
-                  <td>1</td>
-                  <td>₹ ${totalAmount}</td>
-                </tr>
-                ${Array(4).fill('<tr><td></td><td></td><td></td><td></td></tr>').join('')}
+                ${items.map((item, idx) => `
+                  <tr>
+                    <td>${idx + 1}</td>
+                    <td style="text-align: left;">${item.category}</td>
+                    <td>1</td>
+                    <td>₹ ${item.price}</td>
+                  </tr>
+                `).join('')}
+                ${items.length < 4 ? Array(4 - items.length).fill('<tr><td></td><td></td><td></td><td></td></tr>').join('') : ''}
               </tbody>
             </table>
 
@@ -423,8 +450,9 @@ export default function IncomeEntry() {
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
-    if (!customerName || !amount) {
-      alert("Please fill in Customer Name and Amount");
+    const totalAmount = items.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+    if (!customerName || totalAmount <= 0) {
+      alert("Please fill in Customer Name and at least one service with price.");
       return;
     }
 
@@ -435,9 +463,9 @@ export default function IncomeEntry() {
         customerName,
         vehicleDetails,
         phoneNo,
-        category,
+        items,
         paymentType,
-        amount: `₹ ${amount}`,
+        amount: `₹ ${totalAmount}`,
         address,
         email,
         discount,
@@ -462,7 +490,7 @@ export default function IncomeEntry() {
       setCustomerName('');
       setVehicleDetails('');
       setPhoneNo('');
-      setAmount('');
+      setItems([{ category: 'Wrapping', price: '' }]);
       setAddress('');
       setEmail('');
       setDiscount('');
@@ -536,27 +564,62 @@ export default function IncomeEntry() {
               value={phoneNo}
               onChange={(e) => setPhoneNo(e.target.value)}
             />
-            <select
-              style={mobileInputStyle}
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              <option value="Wrapping">Wrapping</option>
-              <option value="Graphics">Graphics</option>
-              <option value="Sticker Work">Sticker Work</option>
-              <option value="Cooling Film">Cooling Film</option>
-              <option value="Lamination">Lamination</option>
-              <option value="Detailing">Detailing</option>
-              <option value="Ceramic Coating">Ceramic Coating</option>
-              <option value="Graphene Coating">Graphene Coating</option>
-              <option value="Borophane Coating">Borophane Coating</option>
-              <option value="Paint Protection Film">Paint Protection Film</option>
-              <option value="Premium Car Wash">Premium Car Wash</option>
-              <option value="Polishing">Polishing</option>
-              <option value="Detailing Wash">Detailing Wash</option>
-              <option value="Steam Wash">Steam Wash</option>
-              <option value="Head Light Restoration">Head Light Restoration</option>
-            </select>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <label style={{ fontWeight: 800, fontSize: '0.85rem' }}>Services</label>
+              {items.map((item, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <select
+                    style={{ ...mobileInputStyle, flex: 2 }}
+                    value={item.category}
+                    onChange={(e) => updateItem(idx, 'category', e.target.value)}
+                  >
+                    <option value="Wrapping">Wrapping</option>
+                    <option value="Graphics">Graphics</option>
+                    <option value="Sticker Work">Sticker Work</option>
+                    <option value="Cooling Film">Cooling Film</option>
+                    <option value="Lamination">Lamination</option>
+                    <option value="Detailing">Detailing</option>
+                    <option value="Ceramic Coating">Ceramic Coating</option>
+                    <option value="Graphene Coating">Graphene Coating</option>
+                    <option value="Borophane Coating">Borophane Coating</option>
+                    <option value="Paint Protection Film">Paint Protection Film</option>
+                    <option value="Premium Car Wash">Premium Car Wash</option>
+                    <option value="Polishing">Polishing</option>
+                    <option value="Detailing Wash">Detailing Wash</option>
+                    <option value="Steam Wash">Steam Wash</option>
+                    <option value="Head Light Restoration">Head Light Restoration</option>
+                  </select>
+                  <input
+                    placeholder="Price"
+                    style={{ ...mobileInputStyle, flex: 1 }}
+                    type="number"
+                    value={item.price}
+                    onChange={(e) => updateItem(idx, 'price', e.target.value)}
+                  />
+                  {items.length > 1 && (
+                    <button onClick={() => removeItem(idx)} style={{ color: '#fb7185', background: 'none', border: 'none', padding: '5px' }}>
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                onClick={addItem}
+                style={{
+                  fontSize: '13px',
+                  color: 'var(--color-primary-green)',
+                  background: 'rgba(130, 205, 0, 0.1)',
+                  border: '1px dashed var(--color-primary-green)',
+                  padding: '8px',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  fontWeight: 'bold',
+                  cursor: 'pointer'
+                }}>
+                + Add Another Service
+              </button>
+            </div>
+
             <select
               style={mobileInputStyle}
               value={paymentType}
@@ -565,12 +628,17 @@ export default function IncomeEntry() {
               <option value="CASH">CASH</option>
               <option value="UPI">UPI</option>
             </select>
-            <input
-              placeholder="Enter Amount"
-              style={mobileInputStyle}
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
+
+            <div style={{
+              padding: '12px',
+              backgroundColor: 'rgba(130, 205, 0, 0.1)',
+              borderRadius: '12px',
+              border: '1px solid rgba(130, 205, 0, 0.2)'
+            }}>
+              <p style={{ fontSize: '15px', fontWeight: 800, color: 'var(--color-primary-green)', textAlign: 'center' }}>
+                Total: ₹ {items.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0)}
+              </p>
+            </div>
 
             <button
               onClick={handleSubmit}
@@ -670,6 +738,88 @@ export default function IncomeEntry() {
         </div>
       </div>
 
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '2.5rem', backgroundColor: '#F9FAFB', padding: '2rem', borderRadius: 'var(--radius-lg)', border: '1.5px solid #E5E7EB' }}>
+        <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-primary-dark)' }}>Services & Items</h3>
+        {items.map((item, idx) => (
+          <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: '2rem', alignItems: 'flex-end' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              <label style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-primary-dark)' }}>Service Category</label>
+              <select
+                value={item.category}
+                onChange={(e) => updateItem(idx, 'category', e.target.value)}
+                style={{
+                  padding: '1.125rem',
+                  borderRadius: 'var(--radius-lg)',
+                  border: '1.5px solid #E5E7EB',
+                  backgroundColor: '#fff',
+                  outline: 'none',
+                  fontSize: '0.95rem',
+                  fontWeight: 500,
+                  color: '#4B5563'
+                }}>
+                <option value="Wrapping">Wrapping</option>
+                <option value="Full Wash">Full Wash</option>
+                <option value="Interior Cleaning">Interior Cleaning</option>
+                <option value="Body Polish">Body Polish</option>
+                <option value="Ceramic Coating">Ceramic Coating</option>
+                <option value="Graphene Coating">Graphene Coating</option>
+                <option value="Sun Control Film">Sun Control Film</option>
+                <option value="Steam Wash">Steam Wash</option>
+                <option value="Head Light Restoration">Head Light Restoration</option>
+              </select>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              <label style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-primary-dark)' }}>Service Price</label>
+              <input
+                type="number"
+                placeholder="Price"
+                value={item.price}
+                onChange={(e) => updateItem(idx, 'price', e.target.value)}
+                style={{
+                  padding: '1.125rem',
+                  borderRadius: 'var(--radius-lg)',
+                  border: '1.5px solid #E5E7EB',
+                  backgroundColor: '#fff',
+                  outline: 'none',
+                  fontSize: '0.95rem',
+                  fontWeight: 500
+                }}
+              />
+            </div>
+            {items.length > 1 && (
+              <button
+                onClick={() => removeItem(idx)}
+                style={{
+                  padding: '1.125rem',
+                  color: '#EF4444',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}>
+                <Trash2 size={20} />
+              </button>
+            )}
+          </div>
+        ))}
+        <button
+          onClick={addItem}
+          style={{
+            alignSelf: 'flex-start',
+            color: 'var(--color-primary-green)',
+            fontWeight: 800,
+            fontSize: '0.9rem',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '5px 0'
+          }}>
+          + Add Another Service
+        </button>
+        <div style={{ marginTop: '1rem', borderTop: '2px solid #E5E7EB', paddingTop: '1rem', textAlign: 'right' }}>
+          <p style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-primary-dark)' }}>Total: ₹ {items.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0)}</p>
+        </div>
+      </div>
+
       {/* Form Grid */}
       <div style={{
         display: 'grid',
@@ -678,39 +828,6 @@ export default function IncomeEntry() {
         marginBottom: '3rem'
       }}>
         {/* Row 1 */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-          <label style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-primary-dark)' }}>Category</label>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            style={{
-              padding: '1.125rem',
-              borderRadius: 'var(--radius-lg)',
-              border: '1.5px solid #E5E7EB',
-              backgroundColor: '#fff',
-              outline: 'none',
-              fontSize: '0.95rem',
-              fontWeight: 500,
-              color: '#4B5563'
-            }}>
-            <option value="Wrapping">Wrapping</option>
-            <option value="Graphics">Graphics</option>
-            <option value="Sticker Work">Sticker Work</option>
-            <option value="Cooling Film">Cooling Film</option>
-            <option value="Lamination">Lamination</option>
-            <option value="Detailing">Detailing</option>
-            <option value="Ceramic Coating">Ceramic Coating</option>
-            <option value="Graphene Coating">Graphene Coating</option>
-            <option value="Borophane Coating">Borophane Coating</option>
-            <option value="Paint Protection Film">Paint Protection Film</option>
-            <option value="Premium Car Wash">Premium Car Wash</option>
-            <option value="Polishing">Polishing</option>
-            <option value="Detailing Wash">Detailing Wash</option>
-            <option value="Steam Wash">Steam Wash</option>
-            <option value="Head Light Restoration">Head Light Restoration</option>
-          </select>
-        </div>
-
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
           <label style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-primary-dark)' }}>Customer Name</label>
           <input
@@ -771,25 +888,6 @@ export default function IncomeEntry() {
         </div>
 
         {/* Row 3 */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-          <label style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-primary-dark)' }}>Amount</label>
-          <input
-            type="text"
-            placeholder="Enter Amount"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            style={{
-              padding: '1.125rem',
-              borderRadius: 'var(--radius-lg)',
-              border: '1.5px solid #E5E7EB',
-              backgroundColor: '#fff',
-              outline: 'none',
-              fontSize: '0.95rem',
-              fontWeight: 500
-            }}
-          />
-        </div>
-
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
           <label style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-primary-dark)' }}>Phone Number</label>
           <input
